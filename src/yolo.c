@@ -17,8 +17,9 @@ image voc_labels[20];
 
 void train_yolo(char *cfgfile, char *weightfile)
 {
-    char *train_images = "/data/voc/train.txt";
-    char *backup_directory = "/home/pjreddie/backup/";
+    //char *train_images = "/home/freytag/experiments/2015-11-18-schimpansen-leipzig/images/filelist_ChimpZoo.txt";
+    char *train_images = "/home/rodner/data/apes/chimpzoo.txt";
+    char *backup_directory = "/home/freytag/experiments/2016-04-14-yolo-ape-detection/chimp_zoo/";
     srand(time(0));
     data_seed = time(0);
     char *base = basecfg(cfgfile);
