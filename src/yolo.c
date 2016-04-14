@@ -10,6 +10,9 @@
 #endif
 
 char *voc_names[] = {"aeroplane", "bicycle", "bird", "boat", "bottle", "bus", "car", "cat", "chair", "cow", "diningtable", "dog", "horse", "motorbike", "person", "pottedplant", "sheep", "sofa", "train", "tvmonitor"};
+// image voc_labels[20];
+// char *voc_names[] = {"ape"};
+int i_num_cl = 20;
 image voc_labels[20];
 
 void train_yolo(char *cfgfile, char *weightfile)
@@ -276,6 +279,7 @@ void validate_yolo_recall(char *cfgfile, char *weightfile)
         labelpath = find_replace(labelpath, "JPEGImages", "labels");
         labelpath = find_replace(labelpath, ".jpg", ".txt");
         labelpath = find_replace(labelpath, ".JPEG", ".txt");
+        labelpath = find_replace(labelpath, ".png", ".txt");	
 
         int num_labels = 0;
         box_label *truth = read_boxes(labelpath, &num_labels);
@@ -343,8 +347,8 @@ void test_yolo(char *cfgfile, char *weightfile, char *filename, float thresh)
         printf("%s: Predicted in %f seconds.\n", input, sec(clock()-time));
         convert_yolo_detections(predictions, l.classes, l.n, l.sqrt, l.side, 1, 1, thresh, probs, boxes, 0);
         if (nms) do_nms_sort(boxes, probs, l.side*l.side*l.n, l.classes, nms);
-        //draw_detections(im, l.side*l.side*l.n, thresh, boxes, probs, voc_names, voc_labels, 20);
-        draw_detections(im, l.side*l.side*l.n, thresh, boxes, probs, voc_names, 0, 20);
+        //draw_detections(im, l.side*l.side*l.n, thresh, boxes, probs, voc_names, voc_labels, i_num_cl);
+        draw_detections(im, l.side*l.side*l.n, thresh, boxes, probs, voc_names, 0, i_num_cl);
         show_image(im, "predictions");
         save_image(im, "predictions");
 
@@ -406,7 +410,7 @@ void demo_yolo(char *cfgfile, char *weightfile, float thresh, int cam_index)
 void run_yolo(int argc, char **argv)
 {
     int i;
-    for(i = 0; i < 20; ++i){
+    for(i = 0; i < i_num_cl; ++i){
         char buff[256];
         sprintf(buff, "data/labels/%s.png", voc_names[i]);
         voc_labels[i] = load_image_color(buff, 0, 0);
