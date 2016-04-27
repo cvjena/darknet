@@ -9,16 +9,16 @@
 #include "opencv2/highgui/highgui_c.h"
 #endif
 
-char *voc_names[] = {"aeroplane", "bicycle", "bird", "boat", "bottle", "bus", "car", "cat", "chair", "cow", "diningtable", "dog", "horse", "motorbike", "person", "pottedplant", "sheep", "sofa", "train", "tvmonitor"};
+// char *voc_names[] = {"aeroplane", "bicycle", "bird", "boat", "bottle", "bus", "car", "cat", "chair", "cow", "diningtable", "dog", "horse", "motorbike", "person", "pottedplant", "sheep", "sofa", "train", "tvmonitor"};
 // image voc_labels[20];
-// char *voc_names[] = {"ape"};
-int i_num_cl = 20;
-image voc_labels[20];
+char *voc_names[] = {"ape"};
+int i_num_cl = 1;
+image voc_labels[1];
 
 void train_yolo(char *cfgfile, char *weightfile)
 {
-    //char *train_images = "/home/freytag/experiments/2015-11-18-schimpansen-leipzig/images/filelist_ChimpZoo.txt";
-    char *train_images = "/home/rodner/data/apes/chimpzoo.txt";
+    char *train_images = "/home/freytag/experiments/2015-11-18-schimpansen-leipzig/images/filelist_ChimpZoo.txt";
+//     char *train_images = "/home/rodner/data/apes/chimpzoo.txt";
     char *backup_directory = "/home/freytag/experiments/2016-04-14-yolo-ape-detection/chimp_zoo/";
     srand(time(0));
     data_seed = time(0);
