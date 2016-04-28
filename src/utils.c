@@ -199,7 +199,7 @@ void malloc_error()
     exit(-1);
 }
 
-void file_error(char *s)
+void file_error( const char * s)
 {
     fprintf(stderr, "Couldn't open file: %s\n", s);
     exit(0);

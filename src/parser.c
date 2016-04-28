@@ -417,6 +417,8 @@ void parse_net_options(list *options, network *net)
     net->batch *= net->time_steps;
     net->subdivisions = subdivs;
 
+    net->i_snapshot_iteration = option_find_int_quiet(options, "i_snapshot_iteration",1000);
+
     net->h = option_find_int_quiet(options, "height",0);
     net->w = option_find_int_quiet(options, "width",0);
     net->c = option_find_int_quiet(options, "channels",0);
@@ -474,16 +476,22 @@ network parse_network_cfg(char *filename)
 
     section *s = (section *)n->val;
     list *options = s->options;
-    if(!is_network(s)) error("First section must be [net] or [network]");
+
+    // parse global network options, such as global learning rate, number of iterations, batch size, etc.
+    if(!is_network(s))
+    {
+        error("First section must be [net] or [network]");
+    }
     parse_net_options(options, &net);
 
-    params.h = net.h;
-    params.w = net.w;
-    params.c = net.c;
-    params.inputs = net.inputs;
-    params.batch = net.batch;
+    params.h          = net.h;
+    params.w          = net.w;
+    params.c          = net.c;
+    params.inputs     = net.inputs;
+    params.batch      = net.batch;
     params.time_steps = net.time_steps;
 
+    // now loop over all sections (i.e., consecutive layers) and read layer-specific configurations
     n = n->next;
     int count = 0;
     free_section(s);

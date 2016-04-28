@@ -15,75 +15,102 @@ char *voc_names[] = {"ape"};
 int i_num_cl = 1;
 image voc_labels[1];
 
-void train_yolo(char *cfgfile, char *weightfile)
+void train_yolo(  char *cfgfile,
+                  char *weightfile,
+                  const char * c_fl_train,
+                  const char * c_dir_backup
+                )
 {
-    char *train_images = "/home/freytag/experiments/2016-04-18-chimpanzee-new-data/preprocess/data_ChimpZoo/filelist_train.txt";
-//     char *train_images = "/home/rodner/data/apes/chimpzoo.txt";
-    char *backup_directory = "/home/freytag/experiments/2016-04-14-yolo-ape-detection/chimp_zoo_new/";
     srand(time(0));
-    data_seed = time(0);
+    data_seed  = time(0);
+    // read configuration and print main settings to terminal
     char *base = basecfg(cfgfile);
     printf("%s\n", base);
+
+    // read network from config file
     float avg_loss = -1;
     network net = parse_network_cfg(cfgfile);
+    // load pre-trained weights if available
     if(weightfile){
         load_weights(&net, weightfile);
     }
+    // print relevant information of training to terminal
     printf("Learning Rate: %g, Momentum: %g, Decay: %g\n", net.learning_rate, net.momentum, net.decay);
-    int imgs = net.batch*net.subdivisions;
-    int i = *net.seen/imgs;
+
+    int imgs   = net.batch*net.subdivisions;
+    int i_iter = *net.seen/imgs;
     data train, buffer;
 
 
-    layer l = net.layers[net.n - 1];
+    // get last layer of the network to compute loss thereof
+    // -> this only supports networks with a single output layer
+    layer l  = net.layers[net.n - 1];
 
-    int side = l.side;
-    int classes = l.classes;
+    int side     = l.side;
+    int classes  = l.classes;
     float jitter = l.jitter;
 
-    list *plist = get_paths(train_images);
+    list *plist = get_paths( c_fl_train );
     //int N = plist->size;
     char **paths = (char **)list_to_array(plist);
 
     load_args args = {0};
-    args.w = net.w;
-    args.h = net.h;
-    args.paths = paths;
-    args.n = imgs;
-    args.m = plist->size;
-    args.classes = classes;
-    args.jitter = jitter;
+    args.w         = net.w;
+    args.h         = net.h;
+    args.paths     = paths;
+    args.n         = imgs;
+    args.m         = plist->size;
+    args.classes   = classes;
+    args.jitter    = jitter;
     args.num_boxes = side;
-    args.d = &buffer;
-    args.type = REGION_DATA;
+    args.d         = &buffer;
+    args.type      = REGION_DATA;
 
+    int i_snapshot_iteration = net.i_snapshot_iteration;
+
+    // prepare data into chunks
     pthread_t load_thread = load_data_in_thread(args);
+
+    // start training for net.max_batches "iterations"
     clock_t time;
-    //while(i*imgs < N*120){
-    while(get_current_batch(net) < net.max_batches){
-        i += 1;
+    while(get_current_batch(net) < net.max_batches)
+    {
+        i_iter += 1;
+
         time=clock();
+        // wait until all images for the current thread are loaded
         pthread_join(load_thread, 0);
         train = buffer;
         load_thread = load_data_in_thread(args);
 
-        printf("Loaded: %lf seconds\n", sec(clock()-time));
+        printf("Loaded next batch: %lf seconds\n", sec(clock()-time));
 
+        // apply forward and backward pass to all images within the current batch (stored in net.batch)
         time=clock();
         float loss = train_network(net, train);
-        if (avg_loss < 0) avg_loss = loss;
+
+        // average loss over last iterations for visualization / monitoring to avoid heavily zigzagging curves
+        if (avg_loss < 0)
+        {
+            avg_loss = loss;
+        }
         avg_loss = avg_loss*.9 + loss*.1;
 
-        printf("%d: %f, %f avg, %f rate, %lf seconds, %d images\n", i, loss, avg_loss, get_current_rate(net), sec(clock()-time), i*imgs);
-        if(i%1000==0 || i == 600){
+        printf("%d: %f, %f avg, %f rate, %lf seconds, %d images\n", i_iter, loss, avg_loss, get_current_rate(net), sec(clock()-time), i_iter*imgs);
+
+        // snapshot weights after every xxx "iterations"
+        if( ( i_iter%i_snapshot_iteration ) ==0 )
+        {
             char buff[256];
-            sprintf(buff, "%s/%s_%d.weights", backup_directory, base, i);
+            sprintf(buff, "%s/%s_%d.weights", c_dir_backup, base, i_iter);
             save_weights(net, buff);
         }
+        //free dynamic memory
         free_data(train);
     }
+    // we're done, save final weight estimates and say good bye...
     char buff[256];
-    sprintf(buff, "%s/%s_final.weights", backup_directory, base);
+    sprintf(buff, "%s/%s_final.weights", c_dir_backup, base);
     save_weights(net, buff);
 }
 
@@ -670,7 +697,10 @@ void run_yolo(int argc, char **argv)
     }
     else if(0==strcmp(argv[2], "train"))
     {
-        train_yolo(c_cfg, c_weights);
+        char * c_fl_train              = find_char_arg(argc, argv, "-c_fl_train", "./filelist_train.txt");
+        char * c_dir_backup            = find_char_arg(argc, argv, "-c_dir_backup", "./");
+
+        train_yolo(c_cfg, c_weights, c_fl_train, c_dir_backup);
     }
     else if(0==strcmp(argv[2], "valid"))
     {

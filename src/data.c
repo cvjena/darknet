@@ -9,11 +9,11 @@
 
 unsigned int data_seed;
 
-list *get_paths(char *filename)
+list *get_paths(const char * c_filename)
 {
     char *path;
-    FILE *file = fopen(filename, "r");
-    if(!file) file_error(filename);
+    FILE *file = fopen(c_filename, "r");
+    if(!file) file_error(c_filename);
     list *lines = make_list();
     while((path=fgetl(file))){
         list_insert(lines, path);

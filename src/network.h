@@ -33,6 +33,7 @@ typedef struct network{
     float *scales;
     int   *steps;
     int num_steps;
+    int i_snapshot_iteration;
 
     int inputs;
     int h, w, c;

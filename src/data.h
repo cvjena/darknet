@@ -74,7 +74,7 @@ data load_all_cifar10();
 
 data load_data_writing(char **paths, int n, int m, int w, int h, int out_w, int out_h);
 
-list *get_paths(char *filename);
+list *get_paths(const char * c_filename);
 char **get_labels(char *filename);
 void get_random_batch(data d, int n, float *X, float *y);
 void get_next_batch(data d, int n, int offset, float *X, float *y);
