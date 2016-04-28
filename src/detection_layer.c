@@ -10,25 +10,18 @@
 #include <string.h>
 #include <stdlib.h>
 
-detection_layer make_detection_layer(int batch, int inputs, int n, int side, int classes, int coords, int rescore, int b_debug)
+detection_layer make_detection_layer(int batch, int inputs, int n, int side, int classes, int coords, int rescore, const bool b_debug)
 {
     detection_layer l = {0};
-    l.type = DETECTION;
+    l.type    = DETECTION;
 
-    l.n = n;
-    l.batch = batch;
-    l.inputs = inputs;
+    l.n       = n;
+    l.batch   = batch;
+    l.inputs  = inputs;
     l.classes = classes;
-    l.coords = coords;
+    l.coords  = coords;
     l.rescore = rescore;
-    if ( b_debug == 1)
-    {
-        l.b_debug = true;
-    }
-    else
-    {
-        l.b_debug = false;
-    }
+    l.b_debug = b_debug;
 
     l.side = side;
     assert(side*side*((1 + l.coords)*l.n + l.classes) == inputs);

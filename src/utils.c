@@ -66,6 +66,22 @@ int find_int_arg(int argc, char **argv, char *arg, int def)
     return def;
 }
 
+bool find_bool_arg(int argc, char **argv, char *arg, bool b_default)
+{
+    int i;
+    for(i = 0; i < argc-1; ++i){
+        if(!argv[i]) continue;
+        if(0==strcmp(argv[i], arg))
+        {
+            b_default = (atoi(argv[i+1]) == 1 ? true : false);
+            del_arg(argc, argv, i);
+            del_arg(argc, argv, i);
+            break;
+        }
+    }
+    return b_default;
+}
+
 float find_float_arg(int argc, char **argv, char *arg, float def)
 {
     int i;

@@ -219,7 +219,9 @@ detection_layer parse_detection(list *options, size_params params)
     int rescore = option_find_int(options, "rescore", 0);
     int num = option_find_int(options, "num", 1);
     int side = option_find_int(options, "side", 7);
-    detection_layer layer = make_detection_layer(params.batch, params.inputs, num, side, classes, coords, rescore);
+    bool b_debug = option_find_bool(options, "b_debug", false);
+
+    detection_layer layer = make_detection_layer(params.batch, params.inputs, num, side, classes, coords, rescore, b_debug);
 
     layer.softmax = option_find_int(options, "softmax", 0);
     layer.sqrt = option_find_int(options, "sqrt", 0);

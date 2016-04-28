@@ -78,6 +78,25 @@ int option_find_int_quiet(list *l, char *key, int def)
     return def;
 }
 
+
+bool option_find_bool(list *l, char *key, const bool b_default)
+{
+    char *v = option_find(l, key);
+    // if value is 1 than return true, otherwise false
+    if(v) return (atoi(v) == 1 ? true : false);
+    fprintf(stderr, "%s: Using default 'false'\n", key );
+    return b_default;
+}
+
+bool option_find_bool_quiet(list *l, char *key, const bool b_default)
+{
+    char *v = option_find(l, key);
+    // if value is 1 than return true, otherwise false
+    if(v) return (atoi(v) == 1 ? true : false);
+    return b_default;
+}
+
+
 float option_find_float_quiet(list *l, char *key, float def)
 {
     char *v = option_find(l, key);

@@ -312,7 +312,7 @@ void validate_yolo_recall(char *cfgfile, char *weightfile)
     }
 }
 
-void test_yolo(char *cfgfile, char *weightfile, char *filename, float thresh)
+void test_yolo(char *cfgfile, char *weightfile, char *c_filename, float thresh, const bool b_draw_detections, const bool b_write_detections, const char * c_dest )
 {
 
     network net = parse_network_cfg(cfgfile);
@@ -338,8 +338,8 @@ void test_yolo(char *cfgfile, char *weightfile, char *filename, float thresh)
     index = 0;
     //
     while(1){
-        if(filename){
-            strncpy(input, filename, 256);
+        if(c_filename){
+            strncpy(input, c_filename, 256);
         } else {
             printf("Enter Image Path: ");
             fflush(stdout);
@@ -375,8 +375,7 @@ void test_yolo(char *cfgfile, char *weightfile, char *filename, float thresh)
         // save bounding boxes to separate text file
         if ( b_write_detections )
         {
-            char bbout [1024] = "bboxes.txt";
-            FILE *fout_box    = fopen(bbout, "a");
+            FILE *fout_box    = fopen(c_dest, "a");
             int ibox;
             int numbox = l.side*l.side*l.n;
 
@@ -415,8 +414,11 @@ void test_yolo(char *cfgfile, char *weightfile, char *filename, float thresh)
         cvDestroyAllWindows();
         }
 #endif
-        if (filename)
+        // break interactive detection loop if no new filename was entered
+        if (c_filename)
+        {
             break;
+        }
     }
 }
 
@@ -466,6 +468,7 @@ void demo_yolo(char *cfgfile, char *weightfile, float thresh, int cam_index)
 
 void run_yolo(int argc, char **argv)
 {
+
     int i;
     for(i = 0; i < i_num_cl; ++i){
         char buff[256];
@@ -473,19 +476,40 @@ void run_yolo(int argc, char **argv)
         voc_labels[i] = load_image_color(buff, 0, 0);
     }
 
-    float thresh = find_float_arg(argc, argv, "-thresh", .2);
+    float thresh  = find_float_arg(argc, argv, "-thresh", .2);
     int cam_index = find_int_arg(argc, argv, "-c", 0);
+
     if(argc < 4){
         fprintf(stderr, "usage: %s %s [train/test/valid] [cfg] [weights (optional)]\n", argv[0], argv[1]);
         return;
     }
 
-    char *cfg = argv[3];
-    char *weights = (argc > 4) ? argv[4] : 0;
-    char *filename = (argc > 5) ? argv[5]: 0;
-    if(0==strcmp(argv[2], "test")) test_yolo(cfg, weights, filename, thresh);
-    else if(0==strcmp(argv[2], "train")) train_yolo(cfg, weights);
-    else if(0==strcmp(argv[2], "valid")) validate_yolo(cfg, weights);
-    else if(0==strcmp(argv[2], "recall")) validate_yolo_recall(cfg, weights);
-    else if(0==strcmp(argv[2], "demo")) demo_yolo(cfg, weights, thresh, cam_index);
+    char * c_cfg = argv[3];
+    char * c_weights = (argc > 4) ? argv[4] : 0;
+    if(0==strcmp(argv[2], "test"))
+    {
+        bool b_draw_detections     = find_bool_arg(argc, argv, "-draw", false);
+        bool b_write_detections    = find_bool_arg(argc, argv, "-write", false);
+        char * c_dest              = find_char_arg(argc, argv, "-dest", "./bboxes.txt");
+        char * c_filename          = (argc > 5) ? argv[5]: 0;
+
+        test_yolo(c_cfg, c_weights, c_filename, thresh, b_draw_detections, b_write_detections, c_dest );
+    }
+    else if(0==strcmp(argv[2], "train"))
+    {
+        train_yolo(c_cfg, c_weights);
+    }
+    else if(0==strcmp(argv[2], "valid"))
+    {
+        validate_yolo(c_cfg, c_weights);
+    }
+    else if(0==strcmp(argv[2], "recall"))
+    {
+        validate_yolo_recall(c_cfg, c_weights);
+    }
+    else if(0==strcmp(argv[2], "demo"))
+    {
+        demo_yolo(c_cfg, c_weights, thresh, cam_index);
+    }
+
 }

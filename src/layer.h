@@ -3,6 +3,8 @@
 
 #include "activations.h"
 
+#include <stdbool.h>
+
 struct layer;
 typedef struct layer layer;
 
@@ -69,6 +71,10 @@ struct layer{
     int does_cost;
     int joint;
     int noadjust;
+
+    // boolean flags
+    bool b_debug;
+    bool b_verbose;
 
     float alpha;
     float beta;

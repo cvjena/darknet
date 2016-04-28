@@ -3,10 +3,11 @@
 
 #include "layer.h"
 #include "network.h"
+#include <stdbool.h>
 
 typedef layer detection_layer;
 
-detection_layer make_detection_layer(int batch, int inputs, int n, int size, int classes, int coords, int rescore, int b_debug=1);
+detection_layer make_detection_layer(int batch, int inputs, int n, int size, int classes, int coords, int rescore, const bool b_debug);
 void forward_detection_layer(const detection_layer l, network_state state);
 void backward_detection_layer(const detection_layer l, network_state state);
 
