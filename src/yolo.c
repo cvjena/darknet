@@ -46,13 +46,12 @@ void train_yolo(  char *cfgfile,
     // -> this only supports networks with a single output layer
     layer l  = net.layers[net.n - 1];
 
-    int side     = l.side;
-    int classes  = l.classes;
-    float jitter = l.jitter;
+    int side       = l.side;
+    int classes    = l.classes;
+    float jitter   = l.jitter;
 
-    list *plist = get_paths( c_fl_train );
-    //int N = plist->size;
-    char **paths = (char **)list_to_array(plist);
+    list *plist    = get_paths( c_fl_train );
+    char **paths   = (char **)list_to_array(plist);
 
     load_args args = {0};
     args.w         = net.w;
@@ -65,6 +64,9 @@ void train_yolo(  char *cfgfile,
     args.num_boxes = side;
     args.d         = &buffer;
     args.type      = REGION_DATA;
+    //
+    args.c_ending  = (char *)malloc(strlen(net.c_ending_gt_files)+1);
+    strcpy(args.c_ending,net.c_ending_gt_files);
 
     int i_snapshot_iteration = net.i_snapshot_iteration;
 

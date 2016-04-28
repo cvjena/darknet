@@ -15,7 +15,7 @@ int alphanum_to_int(char c);
 char int_to_alphanum(int i);
 void read_all(int fd, char *buffer, size_t bytes);
 void write_all(int fd, char *buffer, size_t bytes);
-char *find_replace(char *str, char *orig, char *rep);
+char *find_replace(char *str, char *orig, const char *rep);
 void error(const char *s);
 void malloc_error();
 void file_error(const char *s);

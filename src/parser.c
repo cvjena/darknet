@@ -419,6 +419,11 @@ void parse_net_options(list *options, network *net)
 
     net->i_snapshot_iteration = option_find_int_quiet(options, "i_snapshot_iteration",1000);
 
+    // what is the file ending of the ground files?
+    char * ending     = option_find_str(options, "c_ending_gt_files", ".txt");
+    net->c_ending_gt_files = (char *)malloc(strlen(ending)+1);
+    strcpy(net->c_ending_gt_files,ending);
+
     net->h = option_find_int_quiet(options, "height",0);
     net->w = option_find_int_quiet(options, "width",0);
     net->c = option_find_int_quiet(options, "channels",0);
