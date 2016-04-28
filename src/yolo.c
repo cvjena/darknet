@@ -312,7 +312,15 @@ void validate_yolo_recall(char *cfgfile, char *weightfile)
     }
 }
 
-void test_yolo(char *cfgfile, char *weightfile, char *c_filename, float thresh, const bool b_draw_detections, const bool b_write_detections, const char * c_dest )
+void test_yolo(  char *cfgfile,
+                 char *weightfile,
+                 char *c_filename,
+                 float thresh,
+                 const bool b_draw_detections,
+                 const bool b_write_detections,
+                 const char * c_dest,
+                 const float f_nms_threshold
+               )
 {
 
     network net = parse_network_cfg(cfgfile);
@@ -326,7 +334,7 @@ void test_yolo(char *cfgfile, char *weightfile, char *c_filename, float thresh, 
     char buff[256];
     char *input = buff;
     int j;
-    float nms=.5;
+
     box *boxes = calloc(l.side*l.side*l.n, sizeof(box));
     float **probs = calloc(l.side*l.side*l.n, sizeof(float *));
     for(j = 0; j < l.side*l.side*l.n; ++j)
@@ -347,16 +355,25 @@ void test_yolo(char *cfgfile, char *weightfile, char *c_filename, float thresh, 
             if(!input) return;
             strtok(input, "\n");
         }
+
+        // load image from given filename
         image im = load_image_color(input,0,0);
+
+        // adapt image to network input size
         image sized = resize_image(im, net.w, net.h);
         float *X = sized.data;
+
+        // do actual prediction
         time=clock();
         float *predictions = network_predict(net, X);
-        printf("%s: Predicted in %f seconds.\n", input, sec(clock()-time));
+        printf("%s Predicted in %f seconds.\n", input, sec(clock()-time));
+
+        // convert results to original image size
         convert_yolo_detections(predictions, l.classes, l.n, l.sqrt, l.side, 1, 1, thresh, probs, boxes, 0);
-        if (nms)
+        // apply non-maximum suppresion to filter overlapping responses
+        if (f_nms_threshold)
         {
-            do_nms_sort(boxes, probs, l.side*l.side*l.n, l.classes, nms);
+            do_nms_sort(boxes, probs, l.side*l.side*l.n, l.classes, f_nms_threshold);
         }
 
 
@@ -405,6 +422,7 @@ void test_yolo(char *cfgfile, char *weightfile, char *c_filename, float thresh, 
             index++;
         }
 
+         //free memory
         free_image(im);
         free_image(sized);
 #ifdef OPENCV
@@ -419,6 +437,150 @@ void test_yolo(char *cfgfile, char *weightfile, char *c_filename, float thresh, 
         {
             break;
         }
+    }
+}
+
+void test_yolo_on_filelist(  char *cfgfile,
+                             char *weightfile,
+                             char *c_filelist,
+                             float thresh,
+                             const bool b_draw_detections,
+                             const bool b_write_detections,
+                             const char * c_dest,
+                             const float f_nms_threshold
+                           )
+{
+
+    // step 1 - read network and load pre-trained weights
+    // this needs to be done only once
+    //
+    network net = parse_network_cfg(cfgfile);
+    if(weightfile){
+        load_weights(&net, weightfile);
+    }
+    detection_layer l = net.layers[net.n-1];
+    set_batch_network(&net, 1);
+    //
+    // step 2 - prepare everything for detection
+    srand(2222222);
+    clock_t time;
+
+    int j;
+    // allocate memory for prediction results
+    box *boxes = calloc(l.side*l.side*l.n, sizeof(box));
+    float **probs = calloc(l.side*l.side*l.n, sizeof(float *));
+    for(j = 0; j < l.side*l.side*l.n; ++j)
+    {
+        probs[j] = calloc(l.classes, sizeof(float *));
+    }
+
+
+    FILE * fp_filelist;
+    char * line = NULL;
+    size_t len = 0;
+    ssize_t i_line_length;
+
+    fp_filelist = fopen( c_filelist, "r" );
+    if (fp_filelist == NULL)
+    {
+        printf("Filelist is not readable!");
+        return;
+    }
+
+    int index;
+    index = 0;
+    // now read line by line, i.e., filename after filename for all test images
+    while ( (i_line_length = getline(&line, &len, fp_filelist)) != -1)
+    {
+        // read filename
+        char c_filename [i_line_length];
+        // remove newline character which is read returned by getline, too
+        memcpy(c_filename, line+ 0 /* Offset */, i_line_length-1 /* Length */);
+        // correctly end the char array in c syntax
+        c_filename [i_line_length-1] = '\0';
+
+        // load image from given filename
+        image im = load_image_color(c_filename,0,0);
+
+        // adapt image to network input size
+        image sized = resize_image(im, net.w, net.h);
+        float *X = sized.data;
+
+        // do actual prediction
+        time=clock();
+        float *predictions = network_predict(net, X);
+        printf("%s predicted in %f seconds.\n", c_filename, sec(clock()-time));
+
+        // convert results to original image size
+        convert_yolo_detections(predictions, l.classes, l.n, l.sqrt, l.side, 1, 1, thresh, probs, boxes, 0);
+        // apply non-maximum suppresion to filter overlapping responses
+        if (f_nms_threshold)
+        {
+            do_nms_sort(boxes, probs, l.side*l.side*l.n, l.classes, f_nms_threshold);
+        }
+
+
+        // draw detections into image and show or write result
+        if ( b_draw_detections )
+        {
+            //draw_detections(im, l.side*l.side*l.n, thresh, boxes, probs, voc_names, voc_labels, i_num_cl);
+            draw_detections(im, l.side*l.side*l.n, thresh, boxes, probs, voc_names, 0, i_num_cl);
+            show_image(im, "predictions");
+            save_image(im, "predictions");
+
+            show_image(sized, "resized");
+        }
+
+
+        // save bounding boxes to separate text file
+        if ( b_write_detections )
+        {
+            FILE *fout_box    = fopen(c_dest, "a");
+            int ibox;
+            int numbox = l.side*l.side*l.n;
+
+            for(ibox = 0; ibox < numbox; ++ibox)
+            {
+                int class = max_index(probs[ibox], l.classes);
+                float prob = probs[ibox][class];
+                if ( prob < thresh )
+                    continue;
+                box b = boxes[ibox];
+
+                int left  = (b.x-b.w/2.)*im.w;
+                int right = (b.x+b.w/2.)*im.w;
+                int top   = (b.y-b.h/2.)*im.h;
+                int bot   = (b.y+b.h/2.)*im.h;
+
+                if(left < 0) left = 0;
+                if(right > im.w-1) right = im.w-1;
+                if(top < 0) top = 0;
+                if(bot > im.h-1) bot = im.h-1;
+
+                fprintf(fout_box, "%s %d %d %d %d %f\n", c_filename, left, right, top, bot, prob );
+                //printf("%s %d %d %d %d %f\n", input, left, right, top, bot, prob );
+            }
+            fclose(fout_box);
+
+            index++;
+        }
+
+        //free memory
+        free_image(im);
+        free_image(sized);
+#ifdef OPENCV
+        if ( b_draw_detections )
+        {
+        cvWaitKey(0);
+        cvDestroyAllWindows();
+        }
+#endif
+    }
+
+    fclose( fp_filelist );
+    if (line)
+    {
+        free(line);
     }
 }
 
@@ -491,9 +653,20 @@ void run_yolo(int argc, char **argv)
         bool b_draw_detections     = find_bool_arg(argc, argv, "-draw", false);
         bool b_write_detections    = find_bool_arg(argc, argv, "-write", false);
         char * c_dest              = find_char_arg(argc, argv, "-dest", "./bboxes.txt");
+        float f_nms_threshold      = find_float_arg(argc, argv, "-nms", 0.5);
         char * c_filename          = (argc > 5) ? argv[5]: 0;
 
-        test_yolo(c_cfg, c_weights, c_filename, thresh, b_draw_detections, b_write_detections, c_dest );
+        test_yolo(c_cfg, c_weights, c_filename, thresh, b_draw_detections, b_write_detections, c_dest, f_nms_threshold );
+    }
+    if(0==strcmp(argv[2], "test_on_filelist"))
+    {
+        bool b_draw_detections     = find_bool_arg(argc, argv, "-draw", false);
+        bool b_write_detections    = find_bool_arg(argc, argv, "-write", false);
+        char * c_dest              = find_char_arg(argc, argv, "-dest", "./bboxes.txt");
+        float f_nms_threshold      = find_float_arg(argc, argv, "-nms", 0.5);
+        char * c_filelist          = (argc > 5) ? argv[5]: 0;
+
+        test_yolo_on_filelist( c_cfg, c_weights, c_filelist, thresh, b_draw_detections, b_write_detections, c_dest, f_nms_threshold );
     }
     else if(0==strcmp(argv[2], "train"))
     {

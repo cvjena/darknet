@@ -472,7 +472,6 @@ float *network_predict(network net, float *input)
 #ifdef GPU
     if(gpu_index >= 0)  return network_predict_gpu(net, input);
 #endif
-
     network_state state;
     state.net = net;
     state.index = 0;
