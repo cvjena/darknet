@@ -6,7 +6,7 @@
 
 typedef layer detection_layer;
 
-detection_layer make_detection_layer(int batch, int inputs, int n, int size, int classes, int coords, int rescore);
+detection_layer make_detection_layer(int batch, int inputs, int n, int size, int classes, int coords, int rescore, int b_debug=1);
 void forward_detection_layer(const detection_layer l, network_state state);
 void backward_detection_layer(const detection_layer l, network_state state);
 

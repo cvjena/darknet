@@ -17,9 +17,9 @@ image voc_labels[1];
 
 void train_yolo(char *cfgfile, char *weightfile)
 {
-    char *train_images = "/home/freytag/experiments/2015-11-18-schimpansen-leipzig/images/filelist_ChimpZoo.txt";
+    char *train_images = "/home/freytag/experiments/2016-04-18-chimpanzee-new-data/preprocess/data_ChimpZoo/filelist_train.txt";
 //     char *train_images = "/home/rodner/data/apes/chimpzoo.txt";
-    char *backup_directory = "/home/freytag/experiments/2016-04-14-yolo-ape-detection/chimp_zoo/";
+    char *backup_directory = "/home/freytag/experiments/2016-04-14-yolo-ape-detection/chimp_zoo_new/";
     srand(time(0));
     data_seed = time(0);
     char *base = basecfg(cfgfile);
@@ -329,7 +329,14 @@ void test_yolo(char *cfgfile, char *weightfile, char *filename, float thresh)
     float nms=.5;
     box *boxes = calloc(l.side*l.side*l.n, sizeof(box));
     float **probs = calloc(l.side*l.side*l.n, sizeof(float *));
-    for(j = 0; j < l.side*l.side*l.n; ++j) probs[j] = calloc(l.classes, sizeof(float *));
+    for(j = 0; j < l.side*l.side*l.n; ++j)
+    {
+        probs[j] = calloc(l.classes, sizeof(float *));
+    }
+
+    int index;
+    index = 0;
+    //
     while(1){
         if(filename){
             strncpy(input, filename, 256);
@@ -347,20 +354,69 @@ void test_yolo(char *cfgfile, char *weightfile, char *filename, float thresh)
         float *predictions = network_predict(net, X);
         printf("%s: Predicted in %f seconds.\n", input, sec(clock()-time));
         convert_yolo_detections(predictions, l.classes, l.n, l.sqrt, l.side, 1, 1, thresh, probs, boxes, 0);
-        if (nms) do_nms_sort(boxes, probs, l.side*l.side*l.n, l.classes, nms);
-        //draw_detections(im, l.side*l.side*l.n, thresh, boxes, probs, voc_names, voc_labels, i_num_cl);
-        draw_detections(im, l.side*l.side*l.n, thresh, boxes, probs, voc_names, 0, i_num_cl);
-        show_image(im, "predictions");
-        save_image(im, "predictions");
+        if (nms)
+        {
+            do_nms_sort(boxes, probs, l.side*l.side*l.n, l.classes, nms);
+        }
 
-        show_image(sized, "resized");
+
+        // draw detections into image and show or write result
+        if ( b_draw_detections )
+        {
+            //draw_detections(im, l.side*l.side*l.n, thresh, boxes, probs, voc_names, voc_labels, i_num_cl);
+            draw_detections(im, l.side*l.side*l.n, thresh, boxes, probs, voc_names, 0, i_num_cl);
+            show_image(im, "predictions");
+            save_image(im, "predictions");
+
+            show_image(sized, "resized");
+        }
+
+
+        // save bounding boxes to separate text file
+        if ( b_write_detections )
+        {
+            char bbout [1024] = "bboxes.txt";
+            FILE *fout_box    = fopen(bbout, "a");
+            int ibox;
+            int numbox = l.side*l.side*l.n;
+
+            for(ibox = 0; ibox < numbox; ++ibox)
+            {
+                int class = max_index(probs[ibox], l.classes);
+                float prob = probs[ibox][class];
+                if ( prob < thresh )
+                    continue;
+                box b = boxes[ibox];
+
+                int left  = (b.x-b.w/2.)*im.w;
+                int right = (b.x+b.w/2.)*im.w;
+                int top   = (b.y-b.h/2.)*im.h;
+                int bot   = (b.y+b.h/2.)*im.h;
+
+                if(left < 0) left = 0;
+                if(right > im.w-1) right = im.w-1;
+                if(top < 0) top = 0;
+                if(bot > im.h-1) bot = im.h-1;
+
+                fprintf(fout_box, "%s %d %d %d %d %f\n", input, left, right, top, bot, prob );
+                //printf("%s %d %d %d %d %f\n", input, left, right, top, bot, prob );
+            }
+            fclose(fout_box);
+
+            index++;
+        }
+
         free_image(im);
         free_image(sized);
 #ifdef OPENCV
+        if ( b_draw_detections )
+        {
         cvWaitKey(0);
         cvDestroyAllWindows();
+        }
 #endif
-        if (filename) break;
+        if (filename)
+            break;
     }
 }
 
