@@ -11,9 +11,9 @@
 
 // char *voc_names[] = {"aeroplane", "bicycle", "bird", "boat", "bottle", "bus", "car", "cat", "chair", "cow", "diningtable", "dog", "horse", "motorbike", "person", "pottedplant", "sheep", "sofa", "train", "tvmonitor"};
 // image voc_labels[20];
-char *voc_names[] = {"ape"};
+char *voc_names[1024];//"ape"};
 int i_num_cl = 1;
-image voc_labels[1];
+image voc_labels[1024];
 
 void train_yolo(  char *cfgfile,
                   char *weightfile,
@@ -660,12 +660,50 @@ void demo_yolo(char *cfgfile, char *weightfile, float thresh, int cam_index)
 void run_yolo(int argc, char **argv)
 {
 
-    int i;
-    for(i = 0; i < i_num_cl; ++i){
-        char buff[256];
-        sprintf(buff, "data/labels/%s.png", voc_names[i]);
-        voc_labels[i] = load_image_color(buff, 0, 0);
+    char * c_list_with_classnames = find_char_arg(argc, argv, "-c_classes", "./data/classnames.txt");
+
+    FILE * fp_classlist;
+    char * line = NULL;
+    size_t len = 0;
+    ssize_t i_line_length;
+
+    fp_classlist = fopen( c_list_with_classnames, "r" );
+    if (fp_classlist == NULL)
+    {
+        printf("Classlist is not readable!");
+        return;
     }
+
+    int i_cl;
+    i_cl = 0;
+    // now read line by line, i.e., filename after filename for all test images
+    while ( (i_line_length = getline(&line, &len, fp_classlist)) != -1)
+    {
+        // read filename
+        char c_classname [i_line_length];
+        // remove newline character which is read returned by getline, too
+        memcpy(c_classname, line+ 0 /* Offset */, i_line_length-1 /* Length */);
+        // correctly end the char array in c syntax
+        c_classname [i_line_length-1] = '\0';
+
+        voc_names[i_cl] = c_classname;
+//        try
+//        {
+//            char buff[256];
+//            sprintf(buff, "data/labels/%s.png", c_classname);
+//            voc_labels[i_cl] = load_image_color(buff, 0, 0);
+//        }
+//        catch (...)
+//        {
+            printf("Found no image for class %s - using unknown instead", c_classname);
+            char buff[256];
+            sprintf(buff, "data/labels/unknown.png");
+            voc_labels[i_cl] = load_image_color(buff, 0, 0);
+//        }
+
+        i_cl = i_cl + 1;
+    }
+    i_num_cl = i_cl+1;
 
     float thresh  = find_float_arg(argc, argv, "-thresh", .2);
     int cam_index = find_int_arg(argc, argv, "-c", 0);
