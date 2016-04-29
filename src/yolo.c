@@ -443,7 +443,7 @@ void test_yolo(  char *cfgfile,
                 if(top < 0) top = 0;
                 if(bot > im.h-1) bot = im.h-1;
 
-                fprintf(fout_box, "%s %d %d %d %d %f class %d \n", input, left, top, right-left, top-bot, prob, class );
+                fprintf(fout_box, "%s %d %d %d %d %f class %d \n", input, left, top, right-left, bot-top, prob, class );
                 //printf("%s %d %d %d %d %f\n", input, left, right, top, bot, prob );
             }
             fclose(fout_box);
@@ -586,7 +586,7 @@ void test_yolo_on_filelist(  char *cfgfile,
                 if(top < 0) top = 0;
                 if(bot > im.h-1) bot = im.h-1;
 
-                fprintf(fout_box, "%s %d %d %d %d %f class %d \n", c_filename, left, top, right-left, top-bot, prob, class );
+                fprintf(fout_box, "%s %d %d %d %d %f class %d \n", c_filename, left, top, right-left, bot-top, prob, class );
                 //printf("%s %d %d %d %d %f\n", input, left, right, top, bot, prob );
             }
             fclose(fout_box);
