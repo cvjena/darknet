@@ -695,7 +695,7 @@ void run_yolo(int argc, char **argv)
 //        }
 //        catch (...)
 //        {
-            printf("Found no image for class %s - using unknown instead", c_classname);
+            printf("Found no image for class %s - using unknown instead\n", c_classname);
             char buff[256];
             sprintf(buff, "data/labels/unknown.png");
             voc_labels[i_cl] = load_image_color(buff, 0, 0);
