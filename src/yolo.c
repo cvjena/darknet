@@ -9,8 +9,13 @@
 #include "opencv2/highgui/highgui_c.h"
 #endif
 
-// char *voc_names[] = {"aeroplane", "bicycle", "bird", "boat", "bottle", "bus", "car", "cat", "chair", "cow", "diningtable", "dog", "horse", "motorbike", "person", "pottedplant", "sheep", "sofa", "train", "tvmonitor"};
-// image voc_labels[20];
+/* Change class number here */
+#define CLASSNUM 2
+
+/* Change class names here */
+// char *voc_names[] = {"stopsign", "yeildsign"};
+// image voc_labels[CLASSNUM];
+
 char *voc_names[1024];//"ape"};
 int i_num_cl = 1;
 image voc_labels[1024];
@@ -288,8 +293,9 @@ void validate_yolo_recall(char *cfgfile, char *weightfile)
     int i=0;
 
     float thresh = .001;
+    int nms = 0;
     float iou_thresh = .5;
-    float nms = 0;
+    float nms_thresh = .5;
 
     int total = 0;
     int correct = 0;
@@ -303,7 +309,7 @@ void validate_yolo_recall(char *cfgfile, char *weightfile)
         char *id = basecfg(path);
         float *predictions = network_predict(net, sized.data);
         convert_yolo_detections(predictions, classes, l.n, square, side, 1, 1, thresh, probs, boxes, 1);
-        if (nms) do_nms(boxes, probs, side*side*l.n, 1, nms);
+        if (nms) do_nms(boxes, probs, side*side*l.n, 1, nms_thresh);
 
         char *labelpath = find_replace(path, "images", "labels");
         labelpath = find_replace(labelpath, "JPEGImages", "labels");
@@ -399,6 +405,7 @@ void test_yolo(  char *cfgfile,
 
         // convert results to original image size
         convert_yolo_detections(predictions, l.classes, l.n, l.sqrt, l.side, 1, 1, thresh, probs, boxes, 0);
+
         // apply non-maximum suppresion to filter overlapping responses
         if (f_nms_threshold)
         {
@@ -538,6 +545,7 @@ void test_yolo_on_filelist(  char *cfgfile,
         // do actual prediction
         time=clock();
         float *predictions = network_predict(net, X);
+	
         printf("%s predicted in %f seconds.\n", c_filename, sec(clock()-time));
 
         // convert results to original image size
@@ -605,13 +613,15 @@ void test_yolo_on_filelist(  char *cfgfile,
         }
 #endif
     }
-
+    
     fclose( fp_filelist );
     if (line)
     {
         free(line);
-    }
+    }    
 }
+
+
 
 /*
 #ifdef OPENCV
@@ -649,9 +659,9 @@ void demo_swag(char *cfgfile, char *weightfile, float thresh){}
 #endif
  */
 
-void demo_yolo(char *cfgfile, char *weightfile, float thresh, int cam_index);
+void demo_yolo(char *cfgfile, char *weightfile, float thresh, int cam_index, char* filename);
 #ifndef GPU
-void demo_yolo(char *cfgfile, char *weightfile, float thresh, int cam_index)
+void demo_yolo(char *cfgfile, char *weightfile, float thresh, int cam_index, char* filename)
 {
     fprintf(stderr, "Darknet must be compiled with CUDA for YOLO demo.\n");
 }
@@ -750,9 +760,14 @@ void run_yolo(int argc, char **argv)
     {
         validate_yolo_recall(c_cfg, c_weights);
     }
-    else if(0==strcmp(argv[2], "demo"))
+    else if(0==strcmp(argv[2], "demo_cam"))
     {
-        demo_yolo(c_cfg, c_weights, thresh, cam_index);
+        demo_yolo(c_cfg, c_weights, thresh, cam_index, "NULL");
     }
-
+    else if(0==strcmp(argv[2], "demo_vid"))
+    {
+      char * c_filename          = (argc > 5) ? argv[5]: 0;
+      
+      demo_yolo(c_cfg, c_weights, thresh, -1, c_filename);    
+    }
 }
