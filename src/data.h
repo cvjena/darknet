@@ -50,6 +50,7 @@ typedef struct load_args{
     image *im;
     image *resized;
     data_type type;
+    char * c_ending;
 } load_args;
 
 typedef struct{
@@ -66,7 +67,7 @@ void print_letters(float *pred, int n);
 data load_data_captcha(char **paths, int n, int m, int k, int w, int h);
 data load_data_captcha_encode(char **paths, int n, int m, int w, int h);
 data load_data(char **paths, int n, int m, char **labels, int k, int w, int h);
-data load_data_detection(int n, char **paths, int m, int classes, int w, int h, int num_boxes, int background);
+data load_data_detection(int n, char **paths, int m, int classes, int w, int h, int num_boxes, int background, const char *c_ending);
 
 box_label *read_boxes(char *filename, int *n);
 data load_cifar10_data(char *filename);
@@ -74,7 +75,7 @@ data load_all_cifar10();
 
 data load_data_writing(char **paths, int n, int m, int w, int h, int out_w, int out_h);
 
-list *get_paths(char *filename);
+list *get_paths(const char * c_filename);
 char **get_labels(char *filename);
 void get_random_batch(data d, int n, float *X, float *y);
 void get_next_batch(data d, int n, int offset, float *X, float *y);

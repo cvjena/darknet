@@ -10,17 +10,19 @@
 #include <string.h>
 #include <stdlib.h>
 
-detection_layer make_detection_layer(int batch, int inputs, int n, int side, int classes, int coords, int rescore)
+detection_layer make_detection_layer(int batch, int inputs, int n, int side, int classes, int coords, int rescore, const bool b_debug)
 {
     detection_layer l = {0};
-    l.type = DETECTION;
+    l.type    = DETECTION;
 
-    l.n = n;
-    l.batch = batch;
-    l.inputs = inputs;
+    l.n       = n;
+    l.batch   = batch;
+    l.inputs  = inputs;
     l.classes = classes;
-    l.coords = coords;
+    l.coords  = coords;
     l.rescore = rescore;
+    l.b_debug = b_debug;
+
     l.side = side;
     assert(side*side*((1 + l.coords)*l.n + l.classes) == inputs);
     l.cost = calloc(1, sizeof(float));
@@ -50,7 +52,7 @@ void forward_detection_layer(const detection_layer l, network_state state)
             int index = b*l.inputs;
             for (i = 0; i < locations; ++i) {
                 int offset = i*l.classes;
-                softmax_array(l.output + index + offset, l.classes,
+                softmax_array(l.output + index + offset, l.classes, 1,
                         l.output + index + offset);
             }
             int offset = locations*l.classes;
@@ -175,7 +177,10 @@ void forward_detection_layer(const detection_layer l, network_state state)
                         LOGISTIC, l.delta + index + locations*l.classes);
             }
         }
-        printf("Detection Avg IOU: %f, Pos Cat: %f, All Cat: %f, Pos Obj: %f, Any Obj: %f, count: %d\n", avg_iou/count, avg_cat/count, avg_allcat/(count*l.classes), avg_obj/count, avg_anyobj/(l.batch*locations*l.n), count);
+        if ( l.b_debug )
+        {
+            printf("Detection Avg IOU: %f, Pos Cat: %f, All Cat: %f, Pos Obj: %f, Any Obj: %f, count: %d\n", avg_iou/count, avg_cat/count, avg_allcat/(count*l.classes), avg_obj/count, avg_anyobj/(l.batch*locations*l.n), count);
+        }
     }
 }
 

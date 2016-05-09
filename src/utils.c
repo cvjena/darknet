@@ -66,6 +66,22 @@ int find_int_arg(int argc, char **argv, char *arg, int def)
     return def;
 }
 
+bool find_bool_arg(int argc, char **argv, char *arg, bool b_default)
+{
+    int i;
+    for(i = 0; i < argc-1; ++i){
+        if(!argv[i]) continue;
+        if(0==strcmp(argv[i], arg))
+        {
+            b_default = (atoi(argv[i+1]) == 1 ? true : false);
+            del_arg(argc, argv, i);
+            del_arg(argc, argv, i);
+            break;
+        }
+    }
+    return b_default;
+}
+
 float find_float_arg(int argc, char **argv, char *arg, float def)
 {
     int i;
@@ -127,15 +143,14 @@ void pm(int M, int N, float *A)
     for(i =0 ; i < M; ++i){
         printf("%d ", i+1);
         for(j = 0; j < N; ++j){
-            printf("%10.6f, ", A[i*N+j]);
+            printf("%2.4f, ", A[i*N+j]);
         }
         printf("\n");
     }
     printf("\n");
 }
 
-
-char *find_replace(char *str, char *orig, char *rep)
+char *find_replace(char *str, char *orig, const char *rep)
 {
     static char buffer[4096];
     char *p;
@@ -184,7 +199,7 @@ void malloc_error()
     exit(-1);
 }
 
-void file_error(char *s)
+void file_error( const char * s)
 {
     fprintf(stderr, "Couldn't open file: %s\n", s);
     exit(0);
@@ -485,9 +500,9 @@ float rand_normal()
    }
  */
 
-float rand_uniform()
+float rand_uniform(float min, float max)
 {
-    return (float)rand()/RAND_MAX;
+    return ((float)rand()/RAND_MAX * (max - min)) + min;
 }
 
 float **one_hot_encode(float *a, int n, int k)

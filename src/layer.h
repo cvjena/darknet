@@ -3,6 +3,8 @@
 
 #include "activations.h"
 
+#include <stdbool.h>
+
 struct layer;
 typedef struct layer layer;
 
@@ -20,11 +22,13 @@ typedef enum {
     NORMALIZATION,
     AVGPOOL,
     LOCAL,
-    SHORTCUT
+    SHORTCUT,
+    ACTIVE,
+    RNN
 } LAYER_TYPE;
 
 typedef enum{
-    SSE, MASKED
+    SSE, MASKED, SMOOTH
 } COST_TYPE;
 
 struct layer{
@@ -32,6 +36,7 @@ struct layer{
     ACTIVATION activation;
     COST_TYPE cost_type;
     int batch_normalize;
+    int shortcut;
     int batch;
     int forced;
     int flipped;
@@ -46,11 +51,12 @@ struct layer{
     int side;
     int stride;
     int pad;
-    int crop_width;
-    int crop_height;
     int sqrt;
     int flip;
     int index;
+    int binary;
+    int steps;
+    int hidden;
     float angle;
     float jitter;
     float saturation;
@@ -66,6 +72,10 @@ struct layer{
     int joint;
     int noadjust;
 
+    // boolean flags
+    bool b_debug;
+    bool b_verbose;
+
     float alpha;
     float beta;
     float kappa;
@@ -78,6 +88,7 @@ struct layer{
     int dontload;
     int dontloadscales;
 
+    float temperature;
     float probability;
     float scale;
 
@@ -86,6 +97,9 @@ struct layer{
     float *cost;
     float *filters;
     float *filter_updates;
+    float *state;
+
+    float *binary_filters;
 
     float *biases;
     float *bias_updates;
@@ -108,13 +122,27 @@ struct layer{
     float * mean;
     float * variance;
 
+    float * mean_delta;
+    float * variance_delta;
+
     float * rolling_mean;
     float * rolling_variance;
 
+    float * x;
+    float * x_norm;
+
+    struct layer *input_layer;
+    struct layer *self_layer;
+    struct layer *output_layer;
+
     #ifdef GPU
     int *indexes_gpu;
+    float * state_gpu;
     float * filters_gpu;
     float * filter_updates_gpu;
+
+    float *binary_filters_gpu;
+    float *mean_filters_gpu;
 
     float * spatial_mean_gpu;
     float * spatial_variance_gpu;

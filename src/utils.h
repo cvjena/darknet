@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <time.h>
 #include "list.h"
+#include <stdbool.h>
 
 #define SECRET_NUM -1234
 
@@ -14,10 +15,10 @@ int alphanum_to_int(char c);
 char int_to_alphanum(int i);
 void read_all(int fd, char *buffer, size_t bytes);
 void write_all(int fd, char *buffer, size_t bytes);
-char *find_replace(char *str, char *orig, char *rep);
+char *find_replace(char *str, char *orig, const char *rep);
 void error(const char *s);
 void malloc_error();
-void file_error(char *s);
+void file_error(const char *s);
 void strip(char *s);
 void strip_char(char *s, char bad);
 void top_k(float *a, int n, int k, int *index);
@@ -34,7 +35,7 @@ int max_index(float *a, int n);
 float constrain(float min, float max, float a);
 float mse_array(float *a, int n);
 float rand_normal();
-float rand_uniform();
+float rand_uniform(float min, float max);
 float sum_array(float *a, int n);
 float mean_array(float *a, int n);
 void mean_arrays(float **a, int n, int els, float *avg);
@@ -43,6 +44,7 @@ float mag_array(float *a, int n);
 float **one_hot_encode(float *a, int n, int k);
 float sec(clock_t clocks);
 int find_int_arg(int argc, char **argv, char *arg, int def);
+bool find_bool_arg(int argc, char **argv, char *arg, bool b_default);
 float find_float_arg(int argc, char **argv, char *arg, float def);
 int find_arg(int argc, char* argv[], char *arg);
 char *find_char_arg(int argc, char **argv, char *arg, char *def);

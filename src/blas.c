@@ -1,15 +1,26 @@
 #include "blas.h"
 #include "math.h"
+#include <assert.h>
 
-void shortcut_cpu(float *out, int w, int h, int c, int batch, int sample, float *add, int stride, int c2)
+void shortcut_cpu(int batch, int w1, int h1, int c1, float *add, int w2, int h2, int c2, float *out)
 {
+    int stride = w1/w2;
+    int sample = w2/w1;
+    assert(stride == h1/h2);
+    assert(sample == h2/h1);
+    if(stride < 1) stride = 1;
+    if(sample < 1) sample = 1;
+    int minw = (w1 < w2) ? w1 : w2;
+    int minh = (h1 < h2) ? h1 : h2;
+    int minc = (c1 < c2) ? c1 : c2;
+
     int i,j,k,b;
     for(b = 0; b < batch; ++b){
-        for(k = 0; k < c && k < c2; ++k){
-            for(j = 0; j < h/sample; ++j){
-                for(i = 0; i < w/sample; ++i){
-                    int out_index = i*sample + w*(j*sample + h*(k + c*b));
-                    int add_index = b*w*stride/sample*h*stride/sample*c2 + i*stride + w*stride/sample*(j*stride + h*stride/sample*k);
+        for(k = 0; k < minc; ++k){
+            for(j = 0; j < minh; ++j){
+                for(i = 0; i < minw; ++i){
+                    int out_index = i*sample + w2*(j*sample + h2*(k + c2*b));
+                    int add_index = i*stride + w1*(j*stride + h1*(k + c1*b));
                     out[out_index] += add[add_index];
                 }
             }
@@ -56,7 +67,7 @@ void normalize_cpu(float *x, float *mean, float *variance, int batch, int filter
         for(f = 0; f < filters; ++f){
             for(i = 0; i < spatial; ++i){
                 int index = b*filters*spatial + f*spatial + i;
-                x[index] = (x[index] - mean[f])/(sqrt(variance[f]));
+                x[index] = (x[index] - mean[f])/(sqrt(variance[f]) + .00001f);
             }
         }
     }
@@ -102,6 +113,16 @@ void copy_cpu(int N, float *X, int INCX, float *Y, int INCY)
 {
     int i;
     for(i = 0; i < N; ++i) Y[i*INCY] = X[i*INCX];
+}
+
+void smooth_l1_cpu(int n, float *pred, float *truth, float *delta)
+{
+    int i;
+    for(i = 0; i < n; ++i){
+        float diff = truth[i] - pred[i];
+        if(fabs(diff) > 1) delta[i] = diff;
+        else delta[i] = (diff > 0) ? 1 : -1;
+    }
 }
 
 float dot_cpu(int N, float *X, int INCX, float *Y, int INCY)
