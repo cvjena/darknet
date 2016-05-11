@@ -688,8 +688,83 @@ void demo_yolo(char *cfgfile, char *weightfile, float thresh, int cam_index, cha
 }
 #endif
 
+
+void print_help_dialog()
+{
+    printf("\n========================\n");
+    printf("\n   YOLO HELP \n");
+    printf("\n========================\n");
+
+    printf("\n---------------------------\n");
+    printf("General command layout: \n");
+    printf("---------------------------\n\n");
+    printf(".darknet yolo [command (train/test/valid/...)] [cfg] [weights (optional)] [further arguments (optional)]\n");
+
+    printf("\n---------------------------\n");
+    printf("Possible commands: \n");
+    printf("---------------------------\n\n");
+    printf("test \n");
+    printf("    -> detect on single image or interactively given filenames (run yolo in test mode) \n\n");
+    printf("test_on_filelist \n");
+    printf("    -> detect in all images named in a filelist (run yolo in test mode) \n\n");
+    printf("train \n");
+    printf("    -> run yolo in train mode to estimate parameters \n\n");
+    printf("valid \n");
+    printf("    ->  compute statistics regarding inference time (run yolo in test mode) \n\n");
+    printf("recall \n");
+    printf("    ->  evaluate precision and recall for specified image list (run yolo in test mode) \n\n");
+    printf("demo_cam \n");
+    printf("    -> detect in images from a usb cam (run yolo in test mode) \n\n");
+    printf("demo_vid \n");
+    printf("    -> detect in a specified video (run yolo in test mode) \n\n");
+
+    printf("\n---------------------------\n");
+    printf("Optional parameters: \n");
+    printf("---------------------------\n\n");
+    printf("test \n");
+    printf("    -draw  -- (false), impaint results to image \n");
+    printf("    -write -- (false), write results to file \n");
+    printf("    -dest  -- (./bboxes.txt), filename to write results into \n");
+    printf("    -nms   -- (0.5), threshold for non-maximum-suppresion \n");
+    printf("\n");
+
+    printf("test_on_filelist \n");
+    printf("    -draw  -- (false), impaint results to image \n");
+    printf("    -write -- (false), write results to file \n");
+    printf("    -dest  -- (./bboxes.txt), filename to write results into \n");
+    printf("    -nms   -- (0.5), threshold for non-maximum-suppresion \n");
+    printf("\n");
+
+    printf("train \n");
+    printf("    -c_fl_train  -- (./filelist_train.txt),  \n");
+    printf("    -c_dir_backup -- (./),  \n");
+    printf("\n");
+
+    printf("valid \n");
+    printf("\n");
+
+    printf("recall \n");
+    printf("\n");
+
+    printf("demo_cam \n");
+    printf("\n");
+
+    printf("demo_vid \n");
+    printf("\n");
+
+}
+
 void run_yolo(int argc, char **argv)
 {
+
+    // only print a helpin dialog?
+    if(0==strcmp(argv[2], "help"))
+    {
+        print_help_dialog();
+        return;
+    }
+
+    // now do everything which is not needed for help
 
     char * c_list_with_classnames = find_char_arg(argc, argv, "-c_classes", "./data/classnames_VOC.txt");
 
@@ -777,7 +852,7 @@ void run_yolo(int argc, char **argv)
     int cam_index = find_int_arg(argc, argv, "-c", 0);
 
     if(argc < 4){
-        fprintf(stderr, "usage: %s %s [train/test/valid] [cfg] [weights (optional)]\n", argv[0], argv[1]);
+        fprintf(stderr, "usage: %s %s [command (train/test/valid/...)] [cfg] [weights (optional)] [further arguments (optional)]\n", argv[0], argv[1]);
         return;
     }
 
