@@ -698,60 +698,80 @@ void print_help_dialog()
     printf("\n---------------------------\n");
     printf("General command layout: \n");
     printf("---------------------------\n\n");
-    printf(".darknet yolo [command (train/test/valid/...)] [cfg] [weights (optional)] [further arguments (optional)]\n");
+    printf(".darknet yolo [mode (train/test/valid/...)] [cfg] [weights (optional)] [further arguments (optional)]\n");
 
     printf("\n---------------------------\n");
-    printf("Possible commands: \n");
+    printf("Possible modes: \n");
     printf("---------------------------\n\n");
     printf("test \n");
-    printf("    -> detect on single image or interactively given filenames (run yolo in test mode) \n\n");
+    printf("    -> detect on single image or interactively given filenames (run yolo in test state) \n\n");
     printf("test_on_filelist \n");
-    printf("    -> detect in all images named in a filelist (run yolo in test mode) \n\n");
+    printf("    -> detect in all images named in a filelist (run yolo in test state) \n\n");
     printf("train \n");
-    printf("    -> run yolo in train mode to estimate parameters \n\n");
+    printf("    -> run yolo in train state to estimate model parameters \n\n");
     printf("valid \n");
-    printf("    ->  compute statistics regarding inference time (run yolo in test mode) \n\n");
+    printf("    ->  compute statistics regarding inference time (run yolo in test state) \n\n");
     printf("recall \n");
-    printf("    ->  evaluate precision and recall for specified image list (run yolo in test mode) \n\n");
+    printf("    ->  evaluate precision and recall for specified image list (run yolo in test state) \n\n");
     printf("demo_cam \n");
-    printf("    -> detect in images from a usb cam (run yolo in test mode) \n\n");
+    printf("    -> detect in images from a usb cam (run yolo in test state) \n\n");
     printf("demo_vid \n");
-    printf("    -> detect in a specified video (run yolo in test mode) \n\n");
+    printf("    -> detect in a specified video (run yolo in test state) \n\n");
+    
+
 
     printf("\n---------------------------\n");
     printf("Optional parameters: \n");
     printf("---------------------------\n\n");
-    printf("test \n");
-    printf("    -draw  -- (false), impaint results to image \n");
-    printf("    -write -- (false), write results to file \n");
-    printf("    -dest  -- (./bboxes.txt), filename to write results into \n");
-    printf("    -nms   -- (0.5), threshold for non-maximum-suppresion \n");
+    printf("general settings \n");
+    printf("    -c_list_with_classnames  -- (./data/classnames_VOC.txt), file with names of possible categories. THEIR NUMBER SHOULD MATCH YOUR MODEL LAYOUT.   \n");
+    printf("\n");    
+    
+    printf("mode \"test\" \n");
+    printf("    -c_filename  -- (0), filename of image to be processed. Interactive mode if empty.  \n");	
+    printf("    -draw        -- (false), impaint results to image \n");
+    printf("    -write       -- (false), write results to file \n");
+    printf("    -dest        -- (./bboxes.txt), filename to write results into \n");
+    printf("    -nms         -- (0.5), threshold for non-maximum-suppresion \n");
+    printf("    -thresh      -- (0.2), only accept detections with confidence scores above that value \n");    
     printf("\n");
 
-    printf("test_on_filelist \n");
-    printf("    -draw  -- (false), impaint results to image \n");
-    printf("    -write -- (false), write results to file \n");
-    printf("    -dest  -- (./bboxes.txt), filename to write results into \n");
-    printf("    -nms   -- (0.5), threshold for non-maximum-suppresion \n");
+    printf("mode \"test_on_filelist\" \n");
+    printf("    -c_filelist  -- (0), name of list with image filenames (1 per line) \n");	
+    printf("    -draw        -- (false), impaint results to image \n");
+    printf("    -write       -- (false), write results to file \n");
+    printf("    -dest        -- (./bboxes.txt), filename to write results into \n");
+    printf("    -nms         -- (0.5), threshold for non-maximum-suppresion \n");
+    printf("    -thresh      -- (0.2), only accept detections with confidence scores above that value \n");    
     printf("\n");
 
-    printf("train \n");
-    printf("    -c_fl_train  -- (./filelist_train.txt),  \n");
-    printf("    -c_dir_backup -- (./),  \n");
+    printf("mode \"train\" \n");
+    printf("    -c_fl_train   -- (./filelist_train.txt),  name of list with image filenames (1 per line) \n");
+    printf("    -c_dir_backup -- (./),  directory to store weight snapshots in \n");
     printf("\n");
 
-    printf("valid \n");
+    printf("mode \"valid\" \n");
+    printf("    nothing else \n");    
     printf("\n");
 
-    printf("recall \n");
+    printf("mode \"recall\" \n");
+    printf("    nothing else \n");        
     printf("\n");
 
-    printf("demo_cam \n");
+    printf("mode \"demo_cam\" \n");
+    printf("    -cam_idx     -- (0), index of camera port (for OpenCV) \n");
+    printf("    -thresh      -- (0.2), only accept detections with confidence scores above that value \n");    
     printf("\n");
 
-    printf("demo_vid \n");
+    printf("mode \"demo_vid\" \n");
+    printf("    -c_filename  -- (0), filename to video (mp4 preferred) \n");
+    printf("    -thresh      -- (0.2), only accept detections with confidence scores above that value \n");
     printf("\n");
 
+    printf("\n========================\n");
+    printf("\n   END OF YOLO HELP \n");
+    printf("\n        ENJOY!\n");    
+    printf("\n========================\n");    
 }
 
 void run_yolo(int argc, char **argv)
@@ -847,10 +867,6 @@ void run_yolo(int argc, char **argv)
     fclose ( fp_classlist );
 
 
-
-    float thresh  = find_float_arg(argc, argv, "-thresh", .2);
-    int cam_index = find_int_arg(argc, argv, "-c", 0);
-
     if(argc < 4){
         fprintf(stderr, "usage: %s %s [command (train/test/valid/...)] [cfg] [weights (optional)] [further arguments (optional)]\n", argv[0], argv[1]);
         return;
@@ -860,28 +876,30 @@ void run_yolo(int argc, char **argv)
     char * c_weights = (argc > 4) ? argv[4] : 0;
     if(0==strcmp(argv[2], "test"))
     {
-        bool b_draw_detections     = find_bool_arg(argc, argv, "-draw", false);
-        bool b_write_detections    = find_bool_arg(argc, argv, "-write", false);
-        char * c_dest              = find_char_arg(argc, argv, "-dest", "./bboxes.txt");
-        float f_nms_threshold      = find_float_arg(argc, argv, "-nms", 0.5);
-        char * c_filename          = (argc > 5) ? argv[5]: 0;
+        bool b_draw_detections      = find_bool_arg(  argc, argv, "-draw", false);
+        bool b_write_detections     = find_bool_arg(  argc, argv, "-write", false);
+        char * c_dest               = find_char_arg(  argc, argv, "-dest", "./bboxes.txt");
+        float f_nms_threshold       = find_float_arg( argc, argv, "-nms", 0.5);
+	char * c_filename           = find_char_arg(  argc, argv, "-c_filename", 0);
+        float thresh                = find_float_arg( argc, argv, "-thresh", .2);
 
         test_yolo(c_cfg, c_weights, c_filename, thresh, b_draw_detections, b_write_detections, c_dest, f_nms_threshold );
     }
     if(0==strcmp(argv[2], "test_on_filelist"))
     {
-        bool b_draw_detections     = find_bool_arg(argc, argv, "-draw", false);
-        bool b_write_detections    = find_bool_arg(argc, argv, "-write", false);
-        char * c_dest              = find_char_arg(argc, argv, "-dest", "./bboxes.txt");
-        float f_nms_threshold      = find_float_arg(argc, argv, "-nms", 0.5);
-        char * c_filelist          = (argc > 5) ? argv[5]: 0;
+        bool b_draw_detections      = find_bool_arg(  argc, argv, "-draw", false);
+        bool b_write_detections     = find_bool_arg(  argc, argv, "-write", false);
+        char * c_dest               = find_char_arg(  argc, argv, "-dest", "./bboxes.txt");
+        float f_nms_threshold       = find_float_arg( argc, argv, "-nms", 0.5);
+	char * c_filelist           = find_char_arg(  argc, argv, "-c_filelist", 0);
+        float thresh                = find_float_arg( argc, argv, "-thresh", .2);	
 
         test_yolo_on_filelist( c_cfg, c_weights, c_filelist, thresh, b_draw_detections, b_write_detections, c_dest, f_nms_threshold );
     }
     else if(0==strcmp(argv[2], "train"))
     {
-        char * c_fl_train              = find_char_arg(argc, argv, "-c_fl_train", "./filelist_train.txt");
-        char * c_dir_backup            = find_char_arg(argc, argv, "-c_dir_backup", "./");
+        char * c_fl_train           = find_char_arg(argc, argv, "-c_fl_train", "./filelist_train.txt");
+        char * c_dir_backup         = find_char_arg(argc, argv, "-c_dir_backup", "./");
 
         train_yolo(c_cfg, c_weights, c_fl_train, c_dir_backup);
     }
@@ -895,13 +913,17 @@ void run_yolo(int argc, char **argv)
     }
     else if(0==strcmp(argv[2], "demo_cam"))
     {
-        demo_yolo(c_cfg, c_weights, thresh, cam_index, "NULL");
+        int cam_index              = find_int_arg(   argc, argv, "-cam_idx", 0);
+        float thresh               = find_float_arg( argc, argv, "-thresh", .2);
+	
+        demo_yolo(c_cfg, c_weights, thresh, cam_index, "NULL" /*filename*/);
     }
     else if(0==strcmp(argv[2], "demo_vid"))
     {
-      char * c_filename          = (argc > 5) ? argv[5]: 0;
-      
-      demo_yolo(c_cfg, c_weights, thresh, -1, c_filename);    
+        float thresh               = find_float_arg( argc, argv, "-thresh", .2);      
+        char * c_filename          = find_char_arg(  argc, argv, "-c_filename", 0);
+	
+        demo_yolo(c_cfg, c_weights, thresh, -1/*cam_index*/, c_filename);    
     }
 
 
