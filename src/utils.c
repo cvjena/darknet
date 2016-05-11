@@ -517,3 +517,28 @@ float **one_hot_encode(float *a, int n, int k)
     return t;
 }
 
+int count_lines_in_file (  const char * c_fn )
+{
+    FILE* myfile = fopen( c_fn, "r" );
+    int ch, i_number_of_lines = 0;
+
+    // loop through all chars in that file
+    do
+    {
+        ch = fgetc(myfile);
+        if(ch == '\n')
+        {
+            i_number_of_lines++;
+        }
+    } while (ch != EOF);
+
+    // last line doesn't end with a new line!
+    // but there has to be a line at least before the last line
+    if(ch != '\n' && i_number_of_lines != 0)
+        i_number_of_lines++;
+
+    fclose(myfile);
+
+    return i_number_of_lines;
+}
+

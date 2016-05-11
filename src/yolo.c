@@ -4,21 +4,20 @@
 #include "utils.h"
 #include "parser.h"
 #include "box.h"
+// std includes
+#include "unistd.h"
 
 #ifdef OPENCV
 #include "opencv2/highgui/highgui_c.h"
 #endif
 
-/* Change class number here */
-#define CLASSNUM 2
 
-/* Change class names here */
-// char *voc_names[] = {"stopsign", "yeildsign"};
-// image voc_labels[CLASSNUM];
 
-char *voc_names[1024];//"ape"};
-int i_num_cl = 1;
-image voc_labels[1024];
+// global variables
+#include "yolo_global_variables.h"
+char ** c_class_names;
+int i_num_cl;
+image *img_class_labels;
 
 void train_yolo(  char *cfgfile,
                   char *weightfile,
@@ -121,25 +120,41 @@ void train_yolo(  char *cfgfile,
     save_weights(net, buff);
 }
 
-void convert_yolo_detections(float *predictions, int classes, int num, int square, int side, int w, int h, float thresh, float **probs, box *boxes, int only_objectness)
+void convert_yolo_detections(float *predictions,
+                             int classes,
+                             int num /*number of predicted boxes per cell*/,
+                             int square,
+                             int side /*number of cells per dimension*/,
+                             int w,
+                             int h,
+                             float thresh,
+                             float **probs,
+                             box *boxes,
+                             int only_objectness)
 {
     int i,j,n;
     //int per_cell = 5*num+classes;
-    for (i = 0; i < side*side; ++i){
+    for (i = 0; i < side*side; ++i)
+    {
+        // cell index in x and y dimension
         int row = i / side;
         int col = i % side;
-        for(n = 0; n < num; ++n){
-            int index = i*num + n;
-            int p_index = side*side*classes + i*num + n;
-            float scale = predictions[p_index];
+        // run over all predicted boxes for that cell
+        for(n = 0; n < num; ++n)
+        {
+            int index     = i*num + n;
+            int p_index   = side*side*classes + i*num + n;
+            float scale   = predictions[p_index];
             int box_index = side*side*(classes + num) + (i*num + n)*4;
+
             boxes[index].x = (predictions[box_index + 0] + col) / side * w;
             boxes[index].y = (predictions[box_index + 1] + row) / side * h;
             boxes[index].w = pow(predictions[box_index + 2], (square?2:1)) * w;
             boxes[index].h = pow(predictions[box_index + 3], (square?2:1)) * h;
+
             for(j = 0; j < classes; ++j){
                 int class_index = i*classes;
-                float prob = scale*predictions[class_index+j];
+                float prob      = scale*predictions[class_index+j];
                 probs[index][j] = (prob > thresh) ? prob : 0;
             }
             if(only_objectness){
@@ -194,7 +209,7 @@ void validate_yolo(char *cfgfile, char *weightfile)
     FILE **fps = calloc(classes, sizeof(FILE *));
     for(j = 0; j < classes; ++j){
         char buff[1024];
-        snprintf(buff, 1024, "%s%s.txt", base, voc_names[j]);
+        snprintf(buff, 1024, "%s%s.txt", base, c_class_names[j]);
         fps[j] = fopen(buff, "w");
     }
     box *boxes = calloc(side*side*l.n, sizeof(box));
@@ -282,7 +297,7 @@ void validate_yolo_recall(char *cfgfile, char *weightfile)
     FILE **fps = calloc(classes, sizeof(FILE *));
     for(j = 0; j < classes; ++j){
         char buff[1024];
-        snprintf(buff, 1024, "%s%s.txt", base, voc_names[j]);
+        snprintf(buff, 1024, "%s%s.txt", base, c_class_names[j]);
         fps[j] = fopen(buff, "w");
     }
     box *boxes = calloc(side*side*l.n, sizeof(box));
@@ -358,10 +373,16 @@ void test_yolo(  char *cfgfile,
                )
 {
 
+    // step 1 - read network and load pre-trained weights
+    // this needs to be done only once
+    //
+    // ...load network layout
     network net = parse_network_cfg(cfgfile);
+    // ...and pre-computed parameter values
     if(weightfile){
         load_weights(&net, weightfile);
     }
+    // grep last layer which outputs detection responses
     detection_layer l = net.layers[net.n-1];
     set_batch_network(&net, 1);
     srand(2222222);
@@ -370,7 +391,8 @@ void test_yolo(  char *cfgfile,
     char *input = buff;
     int j;
 
-    box *boxes = calloc(l.side*l.side*l.n, sizeof(box));
+    // allocate memory for prediction results
+    box *boxes    = calloc(l.side*l.side*l.n, sizeof(box));
     float **probs = calloc(l.side*l.side*l.n, sizeof(float *));
     for(j = 0; j < l.side*l.side*l.n; ++j)
     {
@@ -404,7 +426,7 @@ void test_yolo(  char *cfgfile,
         printf("%s Predicted in %f seconds.\n", input, sec(clock()-time));
 
         // convert results to original image size
-        convert_yolo_detections(predictions, l.classes, l.n, l.sqrt, l.side, 1, 1, thresh, probs, boxes, 0);
+        convert_yolo_detections(predictions, l.classes, l.n /*number of predicted boxes per cell*/, l.sqrt, l.side, 1 /*int w*/, 1/*int h*/, thresh, probs, boxes, 0 /*int only_objectness*/);
 
         // apply non-maximum suppresion to filter overlapping responses
         if (f_nms_threshold)
@@ -416,8 +438,7 @@ void test_yolo(  char *cfgfile,
         // draw detections into image and show or write result
         if ( b_draw_detections )
         {
-            //draw_detections(im, l.side*l.side*l.n, thresh, boxes, probs, voc_names, voc_labels, i_num_cl);
-            draw_detections(im, l.side*l.side*l.n, thresh, boxes, probs, voc_names, 0, i_num_cl);
+            draw_detections(im, l.side*l.side*l.n, thresh, boxes, probs, c_class_names, img_class_labels, l.classes);
             show_image(im, "predictions");
             save_image(im, "predictions");
 
@@ -434,8 +455,8 @@ void test_yolo(  char *cfgfile,
 
             for(ibox = 0; ibox < numbox; ++ibox)
             {
-                int class = max_index(probs[ibox], l.classes);
-                float prob = probs[ibox][class];
+                int i_class = max_index(probs[ibox], l.classes);
+                float prob = probs[ibox][i_class];
                 if ( prob < thresh )
                     continue;
                 box b = boxes[ibox];
@@ -450,8 +471,7 @@ void test_yolo(  char *cfgfile,
                 if(top < 0) top = 0;
                 if(bot > im.h-1) bot = im.h-1;
 
-                fprintf(fout_box, "%s %d %d %d %d %f class %d \n", input, left, top, right-left, bot-top, prob, class );
-                //printf("%s %d %d %d %d %f\n", input, left, right, top, bot, prob );
+                fprintf(fout_box, "%s %d %d %d %d %f class %d \n", input, left, top, right-left, bot-top, prob, i_class );
             }
             fclose(fout_box);
 
@@ -490,10 +510,13 @@ void test_yolo_on_filelist(  char *cfgfile,
     // step 1 - read network and load pre-trained weights
     // this needs to be done only once
     //
+    // ...load network layout
     network net = parse_network_cfg(cfgfile);
+    // ...and pre-computed parameter values
     if(weightfile){
         load_weights(&net, weightfile);
     }
+    // grep last layer which outputs detection responses
     detection_layer l = net.layers[net.n-1];
     set_batch_network(&net, 1);
     //
@@ -502,8 +525,8 @@ void test_yolo_on_filelist(  char *cfgfile,
     clock_t time;
 
     int j;
-    // allocate memory for prediction results
-    box *boxes = calloc(l.side*l.side*l.n, sizeof(box));
+    // allocate memory for prediction results   
+    box *boxes    = calloc(l.side*l.side*l.n, sizeof(box));
     float **probs = calloc(l.side*l.side*l.n, sizeof(float *));
     for(j = 0; j < l.side*l.side*l.n; ++j)
     {
@@ -549,7 +572,7 @@ void test_yolo_on_filelist(  char *cfgfile,
         printf("%s predicted in %f seconds.\n", c_filename, sec(clock()-time));
 
         // convert results to original image size
-        convert_yolo_detections(predictions, l.classes, l.n, l.sqrt, l.side, 1, 1, thresh, probs, boxes, 0);
+        convert_yolo_detections(predictions, l.classes, l.n /*number of predicted boxes per cell*/, l.sqrt, l.side, 1 /*int w*/, 1/*int h*/, thresh, probs, boxes, 0 /*int only_objectness*/);
         // apply non-maximum suppresion to filter overlapping responses
         if (f_nms_threshold)
         {
@@ -560,8 +583,7 @@ void test_yolo_on_filelist(  char *cfgfile,
         // draw detections into image and show or write result
         if ( b_draw_detections )
         {
-            //draw_detections(im, l.side*l.side*l.n, thresh, boxes, probs, voc_names, voc_labels, i_num_cl);
-            draw_detections(im, l.side*l.side*l.n, thresh, boxes, probs, voc_names, 0, i_num_cl);
+            draw_detections(im, l.side*l.side*l.n, thresh, boxes, probs, c_class_names, img_class_labels, l.classes);
             show_image(im, "predictions");
             save_image(im, "predictions");
 
@@ -578,8 +600,8 @@ void test_yolo_on_filelist(  char *cfgfile,
 
             for(ibox = 0; ibox < numbox; ++ibox)
             {
-                int class = max_index(probs[ibox], l.classes);
-                float prob = probs[ibox][class];
+                int i_class = max_index(probs[ibox], l.classes);
+                float prob = probs[ibox][i_class];
                 if ( prob < thresh )
                     continue;
                 box b = boxes[ibox];
@@ -594,8 +616,7 @@ void test_yolo_on_filelist(  char *cfgfile,
                 if(top < 0) top = 0;
                 if(bot > im.h-1) bot = im.h-1;
 
-                fprintf(fout_box, "%s %d %d %d %d %f class %d \n", c_filename, left, top, right-left, bot-top, prob, class );
-                //printf("%s %d %d %d %d %f\n", input, left, right, top, bot, prob );
+                fprintf(fout_box, "%s %d %d %d %d %f class %d \n", c_filename, left, top, right-left, bot-top, prob, i_class );
             }
             fclose(fout_box);
 
@@ -670,12 +691,15 @@ void demo_yolo(char *cfgfile, char *weightfile, float thresh, int cam_index, cha
 void run_yolo(int argc, char **argv)
 {
 
-    char * c_list_with_classnames = find_char_arg(argc, argv, "-c_classes", "./data/classnames.txt");
+    char * c_list_with_classnames = find_char_arg(argc, argv, "-c_classes", "./data/classnames_VOC.txt");
 
     FILE * fp_classlist;
-    char * line = NULL;
-    size_t len = 0;
-    ssize_t i_line_length;
+
+    if( access( c_list_with_classnames, F_OK ) == -1 )
+    {
+        printf("Classlist does not exist!");
+    }
+
 
     fp_classlist = fopen( c_list_with_classnames, "r" );
     if (fp_classlist == NULL)
@@ -683,12 +707,37 @@ void run_yolo(int argc, char **argv)
         printf("Classlist is not readable!");
         return;
     }
+    fclose ( fp_classlist );
 
-    int i_cl;
-    i_cl = 0;
+    // how many classes are known?
+    // assume empty last line
+    i_num_cl = count_lines_in_file ( c_list_with_classnames ) - 1;
+
+    // allocate enough memory for our global variables
+    c_class_names    =  calloc( i_num_cl, sizeof(char*));
+    img_class_labels =  calloc( i_num_cl, sizeof(image));
+
+
+
+    fp_classlist = fopen( c_list_with_classnames, "r" );
+
+    char * line = NULL;
+    size_t len  = 0;
+    ssize_t i_line_length;
+    int i_line_cnt;
+
     // now read line by line, i.e., filename after filename for all test images
-    while ( (i_line_length = getline(&line, &len, fp_classlist)) != -1)
+    //while ( (i_line_length = getline(&line, &len, fp_classlist)) != -1)
+    for ( i_line_cnt = 0; i_line_cnt < i_num_cl; i_line_cnt++ )
     {
+        i_line_length = getline(&line, &len, fp_classlist);
+
+        if ( i_line_length == -1 )
+        {
+            // this should not happen....
+            break;
+        }
+
         // read filename
         char c_classname [i_line_length];
         // remove newline character which is read returned by getline, too
@@ -696,24 +745,33 @@ void run_yolo(int argc, char **argv)
         // correctly end the char array in c syntax
         c_classname [i_line_length-1] = '\0';
 
-        voc_names[i_cl] = c_classname;
-//        try
-//        {
-//            char buff[256];
-//            sprintf(buff, "data/labels/%s.png", c_classname);
-//            voc_labels[i_cl] = load_image_color(buff, 0, 0);
-//        }
-//        catch (...)
-//        {
-            printf("Found no image for class %s - using unknown instead\n", c_classname);
-            char buff[256];
-            sprintf(buff, "data/labels/unknown.png");
-            voc_labels[i_cl] = load_image_color(buff, 0, 0);
-//        }
+        // now copy the category name to the global char array
+        c_class_names[i_line_cnt] = calloc(i_line_length-1, sizeof(char));
+        memcpy(c_class_names[i_line_cnt], c_classname+ 0 /* Offset */, i_line_length-1 /* Length */);
 
-        i_cl = i_cl + 1;
+        printf("%s\n",c_class_names[i_line_cnt]);
+
+
+        char c_buff[256];
+        sprintf(c_buff, "data/labels/%s.png", c_classname);
+
+
+        if( access( c_buff, F_OK ) != -1 ) {
+            // file exists
+            image cl_img = load_image_color(c_buff, 0, 0);
+            img_class_labels[i_line_cnt] = cl_img;
+        } else {
+            // file doesn't exist
+            printf("Found no image for class %s - using unknown instead\n", c_classname);
+            sprintf(c_buff, "data/labels/unknown.png");
+            image cl_img = load_image_color(c_buff, 0, 0);
+            img_class_labels[i_line_cnt] = cl_img;
+        }
+
     }
-    i_num_cl = i_cl+1;
+    fclose ( fp_classlist );
+
+
 
     float thresh  = find_float_arg(argc, argv, "-thresh", .2);
     int cam_index = find_int_arg(argc, argv, "-c", 0);
@@ -770,4 +828,15 @@ void run_yolo(int argc, char **argv)
       
       demo_yolo(c_cfg, c_weights, thresh, -1, c_filename);    
     }
+
+
+    // clean-up
+    int i_cl;
+    for ( i_cl=0; i_cl <  i_num_cl; i_cl++ )
+    {
+        free( c_class_names[i_cl] );
+        free_image( img_class_labels[i_cl] );
+    }
+    free ( c_class_names );
+    free ( img_class_labels );
 }

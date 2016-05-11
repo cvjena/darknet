@@ -105,25 +105,40 @@ void draw_bbox(image a, box bbox, int w, float r, float g, float b)
     }
 }
 
-void draw_detections(image im, int num, float thresh, box *boxes, float **probs, char **names, image *labels, int classes)
+void draw_detections( image im,
+                      int num,
+                      float thresh,
+                      box *boxes,
+                      float **probs,
+                      char **names,
+                      image *labels,
+                      int classes
+                    )
 {
     int i;
 
-    for(i = 0; i < num; ++i){
-        int class = max_index(probs[i], classes);
-        float prob = probs[i][class];
-        if(prob > thresh){
-            int width = pow(prob, 1./2.)*10+1;
-            printf("%s: %.2f\n", names[class], prob);
-            int offset = class*17 % classes;
-            float red = get_color(0,offset,classes);
+    for(i = 0; i < num; ++i)
+    {
+        int i_class = max_index(probs[i], classes);
+        float f_prob  = probs[i][i_class];
+        if(f_prob > thresh)
+        {
+            printf("%d  - %s: %.2f\n", i_class, names[i_class], f_prob);
+            int thickness = pow(f_prob, 1./2.)*10+1;
+
+            // compute the color code of the box's category
+            int offset  = i_class*17 % classes;
+            //
+            float red   = get_color(0,offset,classes);
             float green = get_color(1,offset,classes);
-            float blue = get_color(2,offset,classes);
+            float blue  = get_color(2,offset,classes);
+            //
             float rgb[3];
             rgb[0] = red;
             rgb[1] = green;
             rgb[2] = blue;
-            box b = boxes[i];
+            //
+            box b  = boxes[i];
 
             int left  = (b.x-b.w/2.)*im.w;
             int right = (b.x+b.w/2.)*im.w;
@@ -135,8 +150,9 @@ void draw_detections(image im, int num, float thresh, box *boxes, float **probs,
             if(top < 0) top = 0;
             if(bot > im.h-1) bot = im.h-1;
 
-            draw_box_width(im, left, top, right, bot, width, red, green, blue);
-            if (labels) draw_label(im, top + width, left, labels[class], rgb);
+            draw_box_width(im, left, top, right, bot, thickness, red, green, blue);
+            if (labels)
+                draw_label(im, top + thickness, left, labels[i_class], rgb);
         }
     }
 }
