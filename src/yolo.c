@@ -542,7 +542,7 @@ void test_yolo_on_filelist(  char *cfgfile,
     fp_filelist = fopen( c_filelist, "r" );
     if (fp_filelist == NULL)
     {
-        printf("Filelist is not readable!");
+        printf("Filelist is not readable!\n");
         return;
     }
 
@@ -792,14 +792,14 @@ void run_yolo(int argc, char **argv)
 
     if( access( c_list_with_classnames, F_OK ) == -1 )
     {
-        printf("Classlist does not exist!");
+        printf("Classlist does not exist!\n");
     }
 
 
     fp_classlist = fopen( c_list_with_classnames, "r" );
     if (fp_classlist == NULL)
     {
-        printf("Classlist is not readable!");
+        printf("Classlist is not readable!\n");
         return;
     }
     fclose ( fp_classlist );
@@ -880,7 +880,7 @@ void run_yolo(int argc, char **argv)
         bool b_write_detections     = find_bool_arg(  argc, argv, "-write", false);
         char * c_dest               = find_char_arg(  argc, argv, "-dest", "./bboxes.txt");
         float f_nms_threshold       = find_float_arg( argc, argv, "-nms", 0.5);
-	char * c_filename           = find_char_arg(  argc, argv, "-c_filename", 0);
+        char * c_filename           = find_char_arg(  argc, argv, "-c_filename", 0);
         float thresh                = find_float_arg( argc, argv, "-thresh", .2);
 
         test_yolo(c_cfg, c_weights, c_filename, thresh, b_draw_detections, b_write_detections, c_dest, f_nms_threshold );
@@ -891,7 +891,7 @@ void run_yolo(int argc, char **argv)
         bool b_write_detections     = find_bool_arg(  argc, argv, "-write", false);
         char * c_dest               = find_char_arg(  argc, argv, "-dest", "./bboxes.txt");
         float f_nms_threshold       = find_float_arg( argc, argv, "-nms", 0.5);
-	char * c_filelist           = find_char_arg(  argc, argv, "-c_filelist", 0);
+        char * c_filelist           = find_char_arg(  argc, argv, "-c_filelist", 0);
         float thresh                = find_float_arg( argc, argv, "-thresh", .2);	
 
         test_yolo_on_filelist( c_cfg, c_weights, c_filelist, thresh, b_draw_detections, b_write_detections, c_dest, f_nms_threshold );
