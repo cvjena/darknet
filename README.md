@@ -7,11 +7,40 @@ For more information see the [Darknet project website](http://pjreddie.com/darkn
 
 For questions or issues please use the [Google Group](https://groups.google.com/forum/#!forum/darknet).
 
+
+---------------------------------------
+
 #About This Fork#
 
 ![Yolo logo](http://guanghan.info/blog/en/wp-content/uploads/2015/12/images-40.jpg)
 
-1. This fork repository adds some additional niche in addition to the current darkenet from pjreddie. e.g.
+This fork repository adds additional methods and options to make working with yolo from pjreddie more simple and generic. Several new features include:
+
+   (1). Optional arguments passable via terminal call with less stringent order.
+   
+   (2). Known categories do not longer need to be modified within the source code but can be passed from an external text file at runtime.  
+   
+   (3). A help dialog listing calls and options for yolo.  
+   
+   (4). Additional flags for yolo while training, e.g., arbitrary ending of ground-truth files or selectable number of snapshot iterations.  
+   
+   (5). Test-mode detection on a given file list
+   
+   (6). More minor improvements.  
+
+#Contact#
+If you have any suggestions for further enhancements or problems with applying the code to your task, contact me at [alexander.freytag@uni-jena.de ](alexander.freytag@uni-jena.de ).
+Complementary,
+you might want to check out the [Google Group](https://groups.google.com/forum/#!forum/darknet) to seek feedback from a broader audience.
+
+
+---------------------------------------
+  
+#About The Fork by Guanghan Ning#
+
+![Yolo logo](http://guanghan.info/blog/en/wp-content/uploads/2015/12/images-40.jpg)
+
+1. This fork repository adds some additional niche in addition to the darknet from pjreddie. e.g.
 
    (1). Read a video file, process it, and output a video with boundingboxes.
    
