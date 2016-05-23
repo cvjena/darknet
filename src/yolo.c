@@ -823,6 +823,8 @@ void run_yolo(int argc, char **argv)
 
     // now read line by line, i.e., filename after filename for all test images
     //while ( (i_line_length = getline(&line, &len, fp_classlist)) != -1)
+    //
+    printf("\nKnown categories:\n");
     for ( i_line_cnt = 0; i_line_cnt < i_num_cl; i_line_cnt++ )
     {
         i_line_length = getline(&line, &len, fp_classlist);
@@ -841,10 +843,10 @@ void run_yolo(int argc, char **argv)
         c_classname [i_line_length-1] = '\0';
 
         // now copy the category name to the global char array
-        c_class_names[i_line_cnt] = calloc(i_line_length-1, sizeof(char));
-        memcpy(c_class_names[i_line_cnt], c_classname+ 0 /* Offset */, i_line_length-1 /* Length */);
+        c_class_names[i_line_cnt] = calloc(i_line_length, sizeof(char));
+        memcpy(c_class_names[i_line_cnt], c_classname+ 0 /* Offset */, i_line_length /* Length */);
 
-        printf("%s\n",c_class_names[i_line_cnt]);
+
 
 
         char c_buff[256];
@@ -852,12 +854,13 @@ void run_yolo(int argc, char **argv)
 
 
         if( access( c_buff, F_OK ) != -1 ) {
+            printf("%s\n",c_class_names[i_line_cnt]);
             // file exists
             image cl_img = load_image_color(c_buff, 0, 0);
             img_class_labels[i_line_cnt] = cl_img;
         } else {
             // file doesn't exist
-            printf("Found no image for class %s - using unknown instead\n", c_classname);
+            printf("%s <- found no image for that category- using \"unknown\" instead\n", c_classname);
             sprintf(c_buff, "data/labels/unknown.png");
             image cl_img = load_image_color(c_buff, 0, 0);
             img_class_labels[i_line_cnt] = cl_img;
@@ -865,6 +868,7 @@ void run_yolo(int argc, char **argv)
 
     }
     fclose ( fp_classlist );
+    printf("\n");
 
 
     if(argc < 4){
