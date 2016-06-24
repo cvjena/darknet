@@ -440,10 +440,11 @@ void test_yolo(  char *cfgfile,
         if ( b_draw_detections )
         {
             draw_detections(im, l.side*l.side*l.n, thresh, boxes, probs, probs_labels, c_class_names, img_class_labels, l.classes);
-            show_image(im, "predictions");
+            /* show_image(im, "predictions"); */
             save_image(im, "predictions");
+            save_image_jpg(im, "predictions");
 
-            show_image(sized, "resized");
+            /* show_image(sized, "resized"); */
         }
 
 
@@ -585,10 +586,11 @@ void test_yolo_on_filelist(  char *cfgfile,
         if ( b_draw_detections )
         {
             draw_detections(im, l.side*l.side*l.n, thresh, boxes, probs, probs_labels, c_class_names, img_class_labels, l.classes);
-            show_image(im, "predictions");
+            /* show_image(im, "predictions"); */
             save_image(im, "predictions");
+            save_image_jpg(im, "predictions");
 
-            show_image(sized, "resized");
+            /* show_image(sized, "resized"); */
         }
 
 
