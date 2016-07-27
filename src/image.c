@@ -371,7 +371,7 @@ void save_image_jpg(image p, char *name)
     sprintf(buff, "%s.jpg", name);
 
     params[0] = CV_IMWRITE_JPEG_QUALITY;
-    params[1] = 25;
+    params[1] = 75;
     params[2] = 0;
 
     IplImage *disp = cvCreateImage(cvSize(p.w,p.h), IPL_DEPTH_8U, p.c);
