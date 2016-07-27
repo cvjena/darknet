@@ -365,9 +365,14 @@ void save_image_jpg(image p, char *name)
     image copy = copy_image(p);
     rgbgr_image(copy);
     int x,y,k;
+    int params[3];
 
     char buff[256];
     sprintf(buff, "%s.jpg", name);
+
+    params[0] = CV_IMWRITE_JPEG_QUALITY;
+    params[1] = 25;
+    params[2] = 0;
 
     IplImage *disp = cvCreateImage(cvSize(p.w,p.h), IPL_DEPTH_8U, p.c);
     int step = disp->widthStep;
@@ -378,7 +383,7 @@ void save_image_jpg(image p, char *name)
             }
         }
     }
-    cvSaveImage(buff, disp,0);
+    cvSaveImage(buff, disp, params);
     cvReleaseImage(&disp);
     free_image(copy);
 }
