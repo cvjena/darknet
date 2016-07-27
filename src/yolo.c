@@ -18,6 +18,7 @@
 char ** c_class_names;
 int i_num_cl;
 image *img_class_labels;
+image probs_labels[99];
 
 void train_yolo(  char *cfgfile,
                   char *weightfile,
@@ -330,7 +331,7 @@ void validate_yolo_recall(char *cfgfile, char *weightfile)
         labelpath = find_replace(labelpath, "JPEGImages", "labels");
         labelpath = find_replace(labelpath, ".jpg", ".txt");
         labelpath = find_replace(labelpath, ".JPEG", ".txt");
-        labelpath = find_replace(labelpath, ".png", ".txt");	
+        labelpath = find_replace(labelpath, ".png", ".txt");
 
         int num_labels = 0;
         box_label *truth = read_boxes(labelpath, &num_labels);
@@ -438,11 +439,12 @@ void test_yolo(  char *cfgfile,
         // draw detections into image and show or write result
         if ( b_draw_detections )
         {
-            draw_detections(im, l.side*l.side*l.n, thresh, boxes, probs, c_class_names, img_class_labels, l.classes);
-            show_image(im, "predictions");
+            draw_detections(im, l.side*l.side*l.n, thresh, boxes, probs, probs_labels, c_class_names, img_class_labels, l.classes);
+            /* show_image(im, "predictions"); */
             save_image(im, "predictions");
+            save_image_jpg(im, "predictions");
 
-            show_image(sized, "resized");
+            /* show_image(sized, "resized"); */
         }
 
 
@@ -471,7 +473,7 @@ void test_yolo(  char *cfgfile,
                 if(top < 0) top = 0;
                 if(bot > im.h-1) bot = im.h-1;
 
-                fprintf(fout_box, "%s %d %d %d %d %f class %d \n", input, left, top, right-left, bot-top, prob, i_class );
+                fprintf(fout_box, "%s,%d,%d,%d,%d,%.2f,%s \n", input, left, top, right-left, bot-top, prob, c_class_names[i_class] );
             }
             fclose(fout_box);
 
@@ -525,7 +527,7 @@ void test_yolo_on_filelist(  char *cfgfile,
     clock_t time;
 
     int j;
-    // allocate memory for prediction results   
+    // allocate memory for prediction results
     box *boxes    = calloc(l.side*l.side*l.n, sizeof(box));
     float **probs = calloc(l.side*l.side*l.n, sizeof(float *));
     for(j = 0; j < l.side*l.side*l.n; ++j)
@@ -568,7 +570,7 @@ void test_yolo_on_filelist(  char *cfgfile,
         // do actual prediction
         time=clock();
         float *predictions = network_predict(net, X);
-	
+
         printf("%s predicted in %f seconds.\n", c_filename, sec(clock()-time));
 
         // convert results to original image size
@@ -583,11 +585,12 @@ void test_yolo_on_filelist(  char *cfgfile,
         // draw detections into image and show or write result
         if ( b_draw_detections )
         {
-            draw_detections(im, l.side*l.side*l.n, thresh, boxes, probs, c_class_names, img_class_labels, l.classes);
-            show_image(im, "predictions");
+            draw_detections(im, l.side*l.side*l.n, thresh, boxes, probs, probs_labels, c_class_names, img_class_labels, l.classes);
+            /* show_image(im, "predictions"); */
             save_image(im, "predictions");
+            save_image_jpg(im, "predictions");
 
-            show_image(sized, "resized");
+            /* show_image(sized, "resized"); */
         }
 
 
@@ -634,12 +637,12 @@ void test_yolo_on_filelist(  char *cfgfile,
         }
 #endif
     }
-    
+
     fclose( fp_filelist );
     if (line)
     {
         free(line);
-    }    
+    }
 }
 
 
@@ -717,7 +720,7 @@ void print_help_dialog()
     printf("    -> detect in images from a usb cam (run yolo in test state) \n\n");
     printf("demo_vid \n");
     printf("    -> detect in a specified video (run yolo in test state) \n\n");
-    
+
 
 
     printf("\n---------------------------\n");
@@ -725,24 +728,24 @@ void print_help_dialog()
     printf("---------------------------\n\n");
     printf("general settings \n");
     printf("    -c_list_with_classnames  -- (./data/classnames_VOC.txt), file with names of possible categories. THEIR NUMBER SHOULD MATCH YOUR MODEL LAYOUT.   \n");
-    printf("\n");    
-    
+    printf("\n");
+
     printf("mode \"test\" \n");
-    printf("    -c_filename  -- (0), filename of image to be processed. Interactive mode if empty.  \n");	
+    printf("    -c_filename  -- (0), filename of image to be processed. Interactive mode if empty.  \n");
     printf("    -draw        -- (false), impaint results to image \n");
     printf("    -write       -- (false), write results to file \n");
     printf("    -dest        -- (./bboxes.txt), filename to write results into \n");
     printf("    -nms         -- (0.5), threshold for non-maximum-suppresion \n");
-    printf("    -thresh      -- (0.2), only accept detections with confidence scores above that value \n");    
+    printf("    -thresh      -- (0.2), only accept detections with confidence scores above that value \n");
     printf("\n");
 
     printf("mode \"test_on_filelist\" \n");
-    printf("    -c_filelist  -- (0), name of list with image filenames (1 per line) \n");	
+    printf("    -c_filelist  -- (0), name of list with image filenames (1 per line) \n");
     printf("    -draw        -- (false), impaint results to image \n");
     printf("    -write       -- (false), write results to file \n");
     printf("    -dest        -- (./bboxes.txt), filename to write results into \n");
     printf("    -nms         -- (0.5), threshold for non-maximum-suppresion \n");
-    printf("    -thresh      -- (0.2), only accept detections with confidence scores above that value \n");    
+    printf("    -thresh      -- (0.2), only accept detections with confidence scores above that value \n");
     printf("\n");
 
     printf("mode \"train\" \n");
@@ -751,16 +754,16 @@ void print_help_dialog()
     printf("\n");
 
     printf("mode \"valid\" \n");
-    printf("    nothing else \n");    
+    printf("    nothing else \n");
     printf("\n");
 
     printf("mode \"recall\" \n");
-    printf("    nothing else \n");        
+    printf("    nothing else \n");
     printf("\n");
 
     printf("mode \"demo_cam\" \n");
     printf("    -cam_idx     -- (0), index of camera port (for OpenCV) \n");
-    printf("    -thresh      -- (0.2), only accept detections with confidence scores above that value \n");    
+    printf("    -thresh      -- (0.2), only accept detections with confidence scores above that value \n");
     printf("\n");
 
     printf("mode \"demo_vid\" \n");
@@ -770,8 +773,8 @@ void print_help_dialog()
 
     printf("\n========================\n");
     printf("\n   END OF YOLO HELP \n");
-    printf("\n        ENJOY!\n");    
-    printf("\n========================\n");    
+    printf("\n        ENJOY!\n");
+    printf("\n========================\n");
 }
 
 void run_yolo(int argc, char **argv)
@@ -782,6 +785,14 @@ void run_yolo(int argc, char **argv)
     {
         print_help_dialog();
         return;
+    }
+
+    float j;
+
+    for(j = 0.01; j < 0.99; j+=0.01){
+      char buff[256];
+      sprintf(buff, "data/probs/%.2f.png", j);
+      probs_labels[(int)(j*100)] = load_image_color(buff, 0, 0);
     }
 
     // now do everything which is not needed for help
@@ -896,7 +907,7 @@ void run_yolo(int argc, char **argv)
         char * c_dest               = find_char_arg(  argc, argv, "-dest", "./bboxes.txt");
         float f_nms_threshold       = find_float_arg( argc, argv, "-nms", 0.5);
         char * c_filelist           = find_char_arg(  argc, argv, "-c_filelist", 0);
-        float thresh                = find_float_arg( argc, argv, "-thresh", .2);	
+        float thresh                = find_float_arg( argc, argv, "-thresh", .2);
 
         test_yolo_on_filelist( c_cfg, c_weights, c_filelist, thresh, b_draw_detections, b_write_detections, c_dest, f_nms_threshold );
     }
@@ -919,15 +930,15 @@ void run_yolo(int argc, char **argv)
     {
         int cam_index              = find_int_arg(   argc, argv, "-cam_idx", 0);
         float thresh               = find_float_arg( argc, argv, "-thresh", .2);
-	
+
         demo_yolo(c_cfg, c_weights, thresh, cam_index, "NULL" /*filename*/);
     }
     else if(0==strcmp(argv[2], "demo_vid"))
     {
-        float thresh               = find_float_arg( argc, argv, "-thresh", .2);      
+        float thresh               = find_float_arg( argc, argv, "-thresh", .2);
         char * c_filename          = find_char_arg(  argc, argv, "-c_filename", 0);
-	
-        demo_yolo(c_cfg, c_weights, thresh, -1/*cam_index*/, c_filename);    
+
+        demo_yolo(c_cfg, c_weights, thresh, -1/*cam_index*/, c_filename);
     }
 
 
