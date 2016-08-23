@@ -7,10 +7,11 @@
 #include "data.h"
 
 typedef enum {
-    CONSTANT, STEP, EXP, POLY, STEPS, SIG
+    CONSTANT, STEP, EXP, POLY, STEPS, SIG, RANDOM
 } learning_rate_policy;
 
 typedef struct network{
+    float *workspace;
     int n;
     int batch;
     int *seen;
@@ -36,9 +37,12 @@ typedef struct network{
     int   *steps;
     int num_steps;
     int i_snapshot_iteration;
+    int burn_in;
 
     int inputs;
     int h, w, c;
+    int max_crop;
+    int min_crop;
 
     #ifdef GPU
     float **input_gpu;
@@ -50,6 +54,7 @@ typedef struct network_state {
     float *truth;
     float *input;
     float *delta;
+    float *workspace;
     int train;
     int index;
     network net;

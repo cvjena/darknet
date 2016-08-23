@@ -26,7 +26,6 @@ image *img_class_labels;
 extern "C" IplImage* image_to_Ipl(image img, int w, int h, int depth, int c, int step);
 extern "C" image ipl_to_image(IplImage* src);
 extern "C" void convert_yolo_detections(float *predictions, int classes, int num, int square, int side, int w, int h, float thresh, float **probs, box *boxes, int only_objectness);
-extern "C" void draw_yolo(image im, int num, float thresh, box *boxes, float **probs);
 
 extern "C" char *voc_names[];
 extern "C" image voc_labels[];
@@ -152,6 +151,10 @@ else
     disp = det;
     det = in;
     det_s = in_s;
+
+    cvNamedWindow("YOLO", CV_WINDOW_NORMAL); 
+    cvMoveWindow("YOLO", 0, 0);
+    cvResizeWindow("YOLO", 1352, 1013);
 
     while(1){
         struct timeval tval_before, tval_after, tval_result;

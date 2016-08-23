@@ -2,6 +2,7 @@
 #define BASE_LAYER_H
 
 #include "activations.h"
+#include "stddef.h"
 
 #include <stdbool.h>
 
@@ -24,7 +25,13 @@ typedef enum {
     LOCAL,
     SHORTCUT,
     ACTIVE,
-    RNN
+    RNN,
+    GRU,
+    CRNN,
+    BATCHNORM,
+    NETWORK,
+    XNOR,
+    BLANK
 } LAYER_TYPE;
 
 typedef enum{
@@ -46,6 +53,7 @@ struct layer{
     int h,w,c;
     int out_h, out_w, out_c;
     int n;
+    int max_boxes;
     int groups;
     int size;
     int side;
@@ -55,8 +63,10 @@ struct layer{
     int flip;
     int index;
     int binary;
+    int xnor;
     int steps;
     int hidden;
+    float dot;
     float angle;
     float jitter;
     float saturation;
@@ -84,6 +94,7 @@ struct layer{
     float object_scale;
     float noobject_scale;
     float class_scale;
+    int random;
 
     int dontload;
     int dontloadscales;
@@ -96,8 +107,16 @@ struct layer{
     float *rand;
     float *cost;
     float *filters;
+    char  *cfilters;
     float *filter_updates;
     float *state;
+    float *prev_state;
+    float *forgot_state;
+    float *forgot_delta;
+    float *state_delta;
+
+    float *concat;
+    float *concat_delta;
 
     float *binary_filters;
 
@@ -135,26 +154,58 @@ struct layer{
     struct layer *self_layer;
     struct layer *output_layer;
 
+    struct layer *input_gate_layer;
+    struct layer *state_gate_layer;
+    struct layer *input_save_layer;
+    struct layer *state_save_layer;
+    struct layer *input_state_layer;
+    struct layer *state_state_layer;
+
+    struct layer *input_z_layer;
+    struct layer *state_z_layer;
+
+    struct layer *input_r_layer;
+    struct layer *state_r_layer;
+
+    struct layer *input_h_layer;
+    struct layer *state_h_layer;
+
+    float *z_cpu;
+    float *r_cpu;
+    float *h_cpu;
+
+    float *binary_input;
+
+    size_t workspace_size;
+
     #ifdef GPU
+    float *z_gpu;
+    float *r_gpu;
+    float *h_gpu;
+
     int *indexes_gpu;
+    float * prev_state_gpu;
+    float * forgot_state_gpu;
+    float * forgot_delta_gpu;
     float * state_gpu;
+    float * state_delta_gpu;
+    float * gate_gpu;
+    float * gate_delta_gpu;
+    float * save_gpu;
+    float * save_delta_gpu;
+    float * concat_gpu;
+    float * concat_delta_gpu;
     float * filters_gpu;
     float * filter_updates_gpu;
 
+    float *binary_input_gpu;
     float *binary_filters_gpu;
-    float *mean_filters_gpu;
-
-    float * spatial_mean_gpu;
-    float * spatial_variance_gpu;
 
     float * mean_gpu;
     float * variance_gpu;
 
     float * rolling_mean_gpu;
     float * rolling_variance_gpu;
-
-    float * spatial_mean_delta_gpu;
-    float * spatial_variance_delta_gpu;
 
     float * variance_delta_gpu;
     float * mean_delta_gpu;
@@ -177,6 +228,16 @@ struct layer{
     float * rand_gpu;
     float * squared_gpu;
     float * norms_gpu;
+    #ifdef CUDNN
+    cudnnTensorDescriptor_t srcTensorDesc, dstTensorDesc;
+    cudnnTensorDescriptor_t dsrcTensorDesc, ddstTensorDesc;
+    cudnnFilterDescriptor_t filterDesc;
+    cudnnFilterDescriptor_t dfilterDesc;
+    cudnnConvolutionDescriptor_t convDesc;
+    cudnnConvolutionFwdAlgo_t fw_algo;
+    cudnnConvolutionBwdDataAlgo_t bd_algo;
+    cudnnConvolutionBwdFilterAlgo_t bf_algo;
+    #endif
     #endif
 };
 

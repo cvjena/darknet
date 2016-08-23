@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+#include <assert.h>
 #include <unistd.h>
 #include <float.h>
 #include <limits.h>
@@ -153,15 +154,18 @@ void pm(int M, int N, float *A)
 char *find_replace(char *str, char *orig, const char *rep)
 {
     static char buffer[4096];
+    static char buffer2[4096];
+    static char buffer3[4096];
     char *p;
 
     if(!(p = strstr(str, orig)))  // Is 'orig' even in 'str'?
         return str;
 
-    strncpy(buffer, str, p-str); // Copy characters from 'str' start to 'orig' st$
-    buffer[p-str] = '\0';
+    strncpy(buffer2, str, p-str); // Copy characters from 'str' start to 'orig' st$
+    buffer2[p-str] = '\0';
 
-    sprintf(buffer+(p-str), "%s%s", rep, p+strlen(orig));
+    sprintf(buffer3, "%s%s%s", buffer2, rep, p+strlen(orig));
+    sprintf(buffer, "%s", buffer3);
 
     return buffer;
 }
@@ -190,7 +194,8 @@ void top_k(float *a, int n, int k, int *index)
 void error(const char *s)
 {
     perror(s);
-    exit(0);
+    assert(0);
+    exit(-1);
 }
 
 void malloc_error()
@@ -282,6 +287,42 @@ char *fgetl(FILE *fp)
     if(line[curr-1] == '\n') line[curr-1] = '\0';
 
     return line;
+}
+
+int read_int(int fd)
+{
+    int n = 0;
+    int next = read(fd, &n, sizeof(int));
+    if(next <= 0) return -1;
+    return n;
+}
+
+void write_int(int fd, int n)
+{
+    int next = write(fd, &n, sizeof(int));
+    if(next <= 0) error("read failed");
+}
+
+int read_all_fail(int fd, char *buffer, size_t bytes)
+{
+    size_t n = 0;
+    while(n < bytes){
+        int next = read(fd, buffer + n, bytes-n);
+        if(next <= 0) return 1;
+        n += next;
+    }
+    return 0;
+}
+
+int write_all_fail(int fd, char *buffer, size_t bytes)
+{
+    size_t n = 0;
+    while(n < bytes){
+        size_t next = write(fd, buffer + n, bytes-n);
+        if(next <= 0) return 1;
+        n += next;
+    }
+    return 0;
 }
 
 void read_all(int fd, char *buffer, size_t bytes)
@@ -399,11 +440,26 @@ float variance_array(float *a, int n)
     return variance;
 }
 
+int constrain_int(int a, int min, int max)
+{
+    if (a < min) return min;
+    if (a > max) return max;
+    return a;
+}
+
 float constrain(float min, float max, float a)
 {
     if (a < min) return min;
     if (a > max) return max;
     return a;
+}
+
+float dist_array(float *a, float *b, int n, int sub)
+{
+    int i;
+    float sum = 0;
+    for(i = 0; i < n; i += sub) sum += pow(a[i]-b[i], 2);
+    return sqrt(sum);
 }
 
 float mse_array(float *a, int n)
@@ -452,6 +508,19 @@ void scale_array(float *a, int n, float s)
     }
 }
 
+int sample_array(float *a, int n)
+{
+    float sum = sum_array(a, n);
+    scale_array(a, n, 1./sum);
+    float r = rand_uniform(0, 1);
+    int i;
+    for(i = 0; i < n; ++i){
+        r = r - a[i];
+        if (r <= 0) return i;
+    }
+    return n-1;
+}
+
 int max_index(float *a, int n)
 {
     if(n <= 0) return -1;
@@ -464,6 +533,12 @@ int max_index(float *a, int n)
         }
     }
     return max_i;
+}
+
+int rand_int(int min, int max)
+{
+    int r = (rand()%(max - min + 1)) + min;
+    return r;
 }
 
 // From http://en.wikipedia.org/wiki/Box%E2%80%93Muller_transform
@@ -499,6 +574,18 @@ float rand_normal()
    return sum-n/2.;
    }
  */
+
+size_t rand_size_t()
+{
+    return  ((size_t)(rand()&0xff) << 56) | 
+            ((size_t)(rand()&0xff) << 48) |
+            ((size_t)(rand()&0xff) << 40) |
+            ((size_t)(rand()&0xff) << 32) |
+            ((size_t)(rand()&0xff) << 24) |
+            ((size_t)(rand()&0xff) << 16) |
+            ((size_t)(rand()&0xff) << 8) |
+            ((size_t)(rand()&0xff) << 0);
+}
 
 float rand_uniform(float min, float max)
 {

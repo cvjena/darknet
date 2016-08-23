@@ -4,6 +4,9 @@
 #include "utils.h"
 #include "parser.h"
 #include "box.h"
+#include "demo.h"
+// functions to convert detections to useful formats
+#include "detection_conversion.h"
 // std includes
 #include "unistd.h"
 
@@ -102,6 +105,7 @@ void train_yolo(  char *cfgfile,
         }
         avg_loss = avg_loss*.9 + loss*.1;
 
+
         printf("%d: %f, %f avg, %f rate, %lf seconds, %d images\n", i_iter, loss, avg_loss, get_current_rate(net), sec(clock()-time), i_iter*imgs);
 
         // snapshot weights after every xxx "iterations"
@@ -118,50 +122,6 @@ void train_yolo(  char *cfgfile,
     char buff[256];
     sprintf(buff, "%s/%s_final.weights", c_dir_backup, base);
     save_weights(net, buff);
-}
-
-void convert_yolo_detections(float *predictions,
-                             int classes,
-                             int num /*number of predicted boxes per cell*/,
-                             int square,
-                             int side /*number of cells per dimension*/,
-                             int w,
-                             int h,
-                             float thresh,
-                             float **probs,
-                             box *boxes,
-                             int only_objectness)
-{
-    int i,j,n;
-    //int per_cell = 5*num+classes;
-    for (i = 0; i < side*side; ++i)
-    {
-        // cell index in x and y dimension
-        int row = i / side;
-        int col = i % side;
-        // run over all predicted boxes for that cell
-        for(n = 0; n < num; ++n)
-        {
-            int index     = i*num + n;
-            int p_index   = side*side*classes + i*num + n;
-            float scale   = predictions[p_index];
-            int box_index = side*side*(classes + num) + (i*num + n)*4;
-
-            boxes[index].x = (predictions[box_index + 0] + col) / side * w;
-            boxes[index].y = (predictions[box_index + 1] + row) / side * h;
-            boxes[index].w = pow(predictions[box_index + 2], (square?2:1)) * w;
-            boxes[index].h = pow(predictions[box_index + 3], (square?2:1)) * h;
-
-            for(j = 0; j < classes; ++j){
-                int class_index = i*classes;
-                float prob      = scale*predictions[class_index+j];
-                probs[index][j] = (prob > thresh) ? prob : 0;
-            }
-            if(only_objectness){
-                probs[index][0] = scale;
-            }
-        }
-    }
 }
 
 void print_yolo_detections(FILE **fps, char *id, box *boxes, float **probs, int total, int classes, int w, int h)
@@ -196,7 +156,8 @@ void validate_yolo(char *cfgfile, char *weightfile)
     srand(time(0));
 
     char *base = "results/comp4_det_test_";
-    list *plist = get_paths("data/voc.2007.test");
+    //list *plist = get_paths("data/voc.2007.test");
+    list *plist = get_paths("/home/pjreddie/data/voc/2007_test.txt");
     //list *plist = get_paths("data/voc.2012.test");
     char **paths = (char **)list_to_array(plist);
 
@@ -263,7 +224,7 @@ void validate_yolo(char *cfgfile, char *weightfile)
             float *predictions = network_predict(net, X);
             int w = val[t].w;
             int h = val[t].h;
-            convert_yolo_detections(predictions, classes, l.n, square, side, w, h, thresh, probs, boxes, 0);
+            convert_detections(predictions, classes, l.n/*number of predicted boxes per cell*/, square, side, w, h, thresh, probs, boxes, 0 /*int only_objectness*/);
             if (nms) do_nms_sort(boxes, probs, side*side*l.n, classes, iou_thresh);
             print_yolo_detections(fps, id, boxes, probs, side*side*l.n, classes, w, h);
             free(id);
@@ -323,8 +284,15 @@ void validate_yolo_recall(char *cfgfile, char *weightfile)
         image sized = resize_image(orig, net.w, net.h);
         char *id = basecfg(path);
         float *predictions = network_predict(net, sized.data);
-        convert_yolo_detections(predictions, classes, l.n, square, side, 1, 1, thresh, probs, boxes, 1);
-        if (nms) do_nms(boxes, probs, side*side*l.n, 1, nms_thresh);
+
+	convert_detections(predictions, classes, l.n /*number of predicted boxes per cell*/, square, side, 1 /*int w*/, 1/*int h*/, thresh, probs, boxes, 1 /*int only_objectness*/);
+        if (nms)
+	{
+	  do_nms(boxes, probs, side*side*l.n, 1, nms_thresh);
+	}
+
+        
+
 
         char *labelpath = find_replace(path, "images", "labels");
         labelpath = find_replace(labelpath, "JPEGImages", "labels");
@@ -426,7 +394,7 @@ void test_yolo(  char *cfgfile,
         printf("%s Predicted in %f seconds.\n", input, sec(clock()-time));
 
         // convert results to original image size
-        convert_yolo_detections(predictions, l.classes, l.n /*number of predicted boxes per cell*/, l.sqrt, l.side, 1 /*int w*/, 1/*int h*/, thresh, probs, boxes, 0 /*int only_objectness*/);
+        convert_detections(predictions, l.classes, l.n /*number of predicted boxes per cell*/, l.sqrt, l.side, 1 /*int w*/, 1/*int h*/, thresh, probs, boxes, 0 /*int only_objectness*/);
 
         // apply non-maximum suppresion to filter overlapping responses
         if (f_nms_threshold)
@@ -572,13 +540,13 @@ void test_yolo_on_filelist(  char *cfgfile,
         printf("%s predicted in %f seconds.\n", c_filename, sec(clock()-time));
 
         // convert results to original image size
-        convert_yolo_detections(predictions, l.classes, l.n /*number of predicted boxes per cell*/, l.sqrt, l.side, 1 /*int w*/, 1/*int h*/, thresh, probs, boxes, 0 /*int only_objectness*/);
+	convert_detections(predictions, l.classes, l.n/*number of predicted boxes per cell*/, l.sqrt, l.side, 1 /*int w*/, 1/*int h*/, thresh, probs, boxes, 0/*int only_objectness*/);
+	
         // apply non-maximum suppresion to filter overlapping responses
         if (f_nms_threshold)
         {
             do_nms_sort(boxes, probs, l.side*l.side*l.n, l.classes, f_nms_threshold);
         }
-
 
         // draw detections into image and show or write result
         if ( b_draw_detections )
@@ -624,6 +592,7 @@ void test_yolo_on_filelist(  char *cfgfile,
         }
 
         //free memory
+        
         free_image(im);
         free_image(sized);
 #ifdef OPENCV
@@ -643,42 +612,6 @@ void test_yolo_on_filelist(  char *cfgfile,
 }
 
 
-
-/*
-#ifdef OPENCV
-image ipl_to_image(IplImage* src);
-#include "opencv2/highgui/highgui_c.h"
-#include "opencv2/imgproc/imgproc_c.h"
-
-void demo_swag(char *cfgfile, char *weightfile, float thresh)
-{
-network net = parse_network_cfg(cfgfile);
-if(weightfile){
-load_weights(&net, weightfile);
-}
-detection_layer layer = net.layers[net.n-1];
-CvCapture *capture = cvCaptureFromCAM(-1);
-set_batch_network(&net, 1);
-srand(2222222);
-while(1){
-IplImage* frame = cvQueryFrame(capture);
-image im = ipl_to_image(frame);
-cvReleaseImage(&frame);
-rgbgr_image(im);
-
-image sized = resize_image(im, net.w, net.h);
-float *X = sized.data;
-float *predictions = network_predict(net, X);
-draw_swag(im, predictions, layer.side, layer.n, "predictions", thresh);
-free_image(im);
-free_image(sized);
-cvWaitKey(10);
-}
-}
-#else
-void demo_swag(char *cfgfile, char *weightfile, float thresh){}
-#endif
- */
 
 void demo_yolo(char *cfgfile, char *weightfile, float thresh, int cam_index, char* filename);
 #ifndef GPU
@@ -773,6 +706,7 @@ void print_help_dialog()
     printf("\n        ENJOY!\n");    
     printf("\n========================\n");    
 }
+
 
 void run_yolo(int argc, char **argv)
 {
@@ -876,7 +810,7 @@ void run_yolo(int argc, char **argv)
         return;
     }
 
-    char * c_cfg = argv[3];
+    char * c_cfg     = argv[3];
     char * c_weights = (argc > 4) ? argv[4] : 0;
     if(0==strcmp(argv[2], "test"))
     {
@@ -929,6 +863,17 @@ void run_yolo(int argc, char **argv)
 	
         demo_yolo(c_cfg, c_weights, thresh, -1/*cam_index*/, c_filename);    
     }
+    else if(0==strcmp(argv[2], "demo_darknet"))
+    {
+        float thresh               = find_float_arg( argc, argv, "-thresh", .2);      
+        char * c_filename          = find_char_arg(  argc, argv, "-c_filename", 0);
+        int cam_index              = find_int_arg(   argc, argv, "-cam_idx", 0);
+	int frame_skip             = find_int_arg(   argc, argv, "-frame_skip", 20);
+	
+	
+	//FIXME list this option in the help dialog
+	demo(c_cfg, c_weights, thresh, cam_index, c_filename, frame_skip);
+    }    
 
 
     // clean-up

@@ -8,13 +8,16 @@
 
 #include "crop_layer.h"
 #include "connected_layer.h"
+#include "gru_layer.h"
 #include "rnn_layer.h"
+#include "crnn_layer.h"
 #include "local_layer.h"
 #include "convolutional_layer.h"
 #include "activation_layer.h"
 #include "deconvolutional_layer.h"
 #include "detection_layer.h"
 #include "normalization_layer.h"
+#include "batchnorm_layer.h"
 #include "maxpool_layer.h"
 #include "avgpool_layer.h"
 #include "cost_layer.h"
@@ -61,7 +64,10 @@ float get_current_rate(network net)
         case EXP:
             return net.learning_rate * pow(net.gamma, batch_num);
         case POLY:
+            if (batch_num < net.burn_in) return net.learning_rate * pow((float)batch_num / net.burn_in, net.power);
             return net.learning_rate * pow(1 - (float)batch_num / net.max_batches, net.power);
+        case RANDOM:
+            return net.learning_rate * pow(rand_uniform(0,1), net.power);
         case SIG:
             return net.learning_rate * (1./(1.+exp(net.gamma*(batch_num - net.step))));
         default:
@@ -85,6 +91,10 @@ char *get_layer_string(LAYER_TYPE a)
             return "connected";
         case RNN:
             return "rnn";
+        case GRU:
+            return "gru";
+        case CRNN:
+            return "crnn";
         case MAXPOOL:
             return "maxpool";
         case AVGPOOL:
@@ -105,6 +115,8 @@ char *get_layer_string(LAYER_TYPE a)
             return "shortcut";
         case NORMALIZATION:
             return "normalization";
+        case BATCHNORM:
+            return "batchnorm";
         default:
             break;
     }
@@ -126,6 +138,7 @@ network make_network(int n)
 
 void forward_network(network net, network_state state)
 {
+    state.workspace = net.workspace;
     int i;
     for(i = 0; i < net.n; ++i){
         state.index = i;
@@ -143,12 +156,18 @@ void forward_network(network net, network_state state)
             forward_local_layer(l, state);
         } else if(l.type == NORMALIZATION){
             forward_normalization_layer(l, state);
+        } else if(l.type == BATCHNORM){
+            forward_batchnorm_layer(l, state);
         } else if(l.type == DETECTION){
             forward_detection_layer(l, state);
         } else if(l.type == CONNECTED){
             forward_connected_layer(l, state);
         } else if(l.type == RNN){
             forward_rnn_layer(l, state);
+        } else if(l.type == GRU){
+            forward_gru_layer(l, state);
+        } else if(l.type == CRNN){
+            forward_crnn_layer(l, state);
         } else if(l.type == CROP){
             forward_crop_layer(l, state);
         } else if(l.type == COST){
@@ -185,6 +204,10 @@ void update_network(network net)
             update_connected_layer(l, update_batch, rate, net.momentum, net.decay);
         } else if(l.type == RNN){
             update_rnn_layer(l, update_batch, rate, net.momentum, net.decay);
+        } else if(l.type == GRU){
+            update_gru_layer(l, update_batch, rate, net.momentum, net.decay);
+        } else if(l.type == CRNN){
+            update_crnn_layer(l, update_batch, rate, net.momentum, net.decay);
         } else if(l.type == LOCAL){
             update_local_layer(l, update_batch, rate, net.momentum, net.decay);
         }
@@ -193,6 +216,9 @@ void update_network(network net)
 
 float *get_network_output(network net)
 {
+    #ifdef GPU
+        return get_network_output_gpu(net);
+    #endif 
     int i;
     for(i = net.n-1; i > 0; --i) if(net.layers[i].type != COST) break;
     return net.layers[i].output;
@@ -205,7 +231,7 @@ float get_network_cost(network net)
     int count = 0;
     for(i = 0; i < net.n; ++i){
         if(net.layers[i].type == COST){
-            sum += net.layers[i].output[0];
+            sum += net.layers[i].cost[0];
             ++count;
         }
         if(net.layers[i].type == DETECTION){
@@ -228,6 +254,7 @@ void backward_network(network net, network_state state)
     int i;
     float *original_input = state.input;
     float *original_delta = state.delta;
+    state.workspace = net.workspace;
     for(i = net.n-1; i >= 0; --i){
         state.index = i;
         if(i == 0){
@@ -247,6 +274,8 @@ void backward_network(network net, network_state state)
             backward_activation_layer(l, state);
         } else if(l.type == NORMALIZATION){
             backward_normalization_layer(l, state);
+        } else if(l.type == BATCHNORM){
+            backward_batchnorm_layer(l, state);
         } else if(l.type == MAXPOOL){
             if(i != 0) backward_maxpool_layer(l, state);
         } else if(l.type == AVGPOOL){
@@ -261,6 +290,10 @@ void backward_network(network net, network_state state)
             backward_connected_layer(l, state);
         } else if(l.type == RNN){
             backward_rnn_layer(l, state);
+        } else if(l.type == GRU){
+            backward_gru_layer(l, state);
+        } else if(l.type == CRNN){
+            backward_crnn_layer(l, state);
         } else if(l.type == LOCAL){
             backward_local_layer(l, state);
         } else if(l.type == COST){
@@ -360,6 +393,11 @@ void set_batch_network(network *net, int b)
     int i;
     for(i = 0; i < net->n; ++i){
         net->layers[i].batch = b;
+        #ifdef CUDNN
+        if(net->layers[i].type == CONVOLUTIONAL){
+            cudnn_convolutional_setup(net->layers + i);
+        }
+        #endif
     }
 }
 
@@ -370,6 +408,7 @@ int resize_network(network *net, int w, int h)
     net->w = w;
     net->h = h;
     int inputs = 0;
+    size_t workspace_size = 0;
     //fprintf(stderr, "Resizing to %d x %d...", w, h);
     //fflush(stderr);
     for (i = 0; i < net->n; ++i){
@@ -389,12 +428,20 @@ int resize_network(network *net, int w, int h)
         }else{
             error("Cannot resize this type of layer");
         }
+        if(l.workspace_size > workspace_size) workspace_size = l.workspace_size;
         inputs = l.outputs;
         net->layers[i] = l;
         w = l.out_w;
         h = l.out_h;
         if(l.type == AVGPOOL) break;
     }
+#ifdef GPU
+        cuda_free(net->workspace);
+        net->workspace = cuda_make_array(0, (workspace_size-1)/sizeof(float)+1);
+#else
+        free(net->workspace);
+        net->workspace = calloc(1, workspace_size);
+#endif
     //fprintf(stderr, " Done!\n");
     return 0;
 }
