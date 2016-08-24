@@ -13,15 +13,21 @@
 #ifdef OPENCV
 #include "opencv2/highgui/highgui_c.h"
 #include "opencv2/imgproc/imgproc_c.h"
-void convert_detections(float *predictions, int classes, int num, int square, int side, int w, int h, float thresh, float **probs, box *boxes, int only_objectness);
 
-extern "C" {
+// #ifdef __cplusplus
+// extern "C" {
+// #endif
 // global variables
 #include "yolo_global_variables.h"
-char ** c_class_names;
-int i_num_cl;
-image *img_class_labels;
-}
+// externchar ** c_class_names;
+// int i_num_cl;
+// image *img_class_labels;
+// #ifdef __cplusplus
+// }
+// #endif
+
+void convert_detections(float *predictions, int classes, int num, int square, int side, int w, int h, float thresh, float **probs, box *boxes, int only_objectness);
+
 
 static char **demo_names;
 static image *demo_labels;
@@ -98,12 +104,11 @@ void demo(char *cfgfile, char *weightfile, float thresh, int cam_index, const ch
     //skip = frame_skip;
     int delay = frame_skip;
 
-    demo_names = voc_names;
-    demo_labels = voc_labels;
+    demo_names   = c_class_names;
+    demo_labels  = img_class_labels;
     demo_classes = i_num_cl;    
     
-    demo_classes = classes;
-    demo_thresh = thresh;
+    demo_thresh  = thresh;
     printf("Demo\n");
     net = parse_network_cfg(cfgfile);
     if(weightfile){
