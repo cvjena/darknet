@@ -11,6 +11,9 @@ extern "C" {
 #include "box.h"
 #include "image.h"
 #include <sys/time.h>
+  
+// functions to convert detections to useful formats
+#include "detection_conversion.h"
 
 // global variables
 #include "yolo_global_variables.h"
@@ -25,10 +28,6 @@ image *img_class_labels;
 #include "opencv2/imgproc/imgproc.hpp"
 extern "C" IplImage* image_to_Ipl(image img, int w, int h, int depth, int c, int step);
 extern "C" image ipl_to_image(IplImage* src);
-extern "C" void convert_yolo_detections(float *predictions, int classes, int num, int square, int side, int w, int h, float thresh, float **probs, box *boxes, int only_objectness);
-
-extern "C" char *voc_names[];
-extern "C" image voc_labels[];
 
 static float **probs;
 static box *boxes;
@@ -74,7 +73,7 @@ void *detect_in_thread(void *ptr)
     float *X = det_s.data;
     float *predictions = network_predict(net, X);
     free_image(det_s);
-    convert_yolo_detections(predictions, l.classes, l.n, l.sqrt, l.side, 1, 1, demo_thresh, probs, boxes, 0);
+    convert_detections(predictions, l.classes, l.n, l.sqrt, l.side, 1, 1, demo_thresh, probs, boxes, 0);
     if (nms > 0) do_nms(boxes, probs, l.side*l.side*l.n, l.classes, nms);
     printf("\033[2J");
     printf("\033[1;1H");
