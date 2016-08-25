@@ -691,7 +691,7 @@ void print_help_dialog()
     printf("    nothing else \n");        
     printf("\n");
 
-    printf("mode \"demo_cam\" \n");
+    printf("mode \"demo_cam_pure_cuda\" \n");
     printf("    -cam_idx     -- (0), index of camera port (for OpenCV) \n");
     printf("    -thresh      -- (0.2), only accept detections with confidence scores above that value \n");    
     printf("\n");
@@ -700,7 +700,13 @@ void print_help_dialog()
     printf("    -c_filename  -- (0), filename to video (mp4 preferred) \n");
     printf("    -thresh      -- (0.2), only accept detections with confidence scores above that value \n");
     printf("\n");
-
+    
+    printf("mode \"demo_cam\" \n");
+    printf("    -cam_idx     -- (0), index of camera port (for OpenCV) \n");
+    printf("    -thresh      -- (0.2), only accept detections with confidence scores above that value \n");    
+    printf("    -frame_skip  -- (20), skip number of frames for slow machines \n");        
+    printf("\n");    
+    
     printf("\n========================\n");
     printf("\n   END OF YOLO HELP \n");
     printf("\n        ENJOY!\n");    
@@ -849,7 +855,7 @@ void run_yolo(int argc, char **argv)
     {
         validate_yolo_recall(c_cfg, c_weights);
     }
-    else if(0==strcmp(argv[2], "demo_cam"))
+    else if(0==strcmp(argv[2], "demo_cam_pure_cuda"))
     {
         int cam_index              = find_int_arg(   argc, argv, "-cam_idx", 0);
         float thresh               = find_float_arg( argc, argv, "-thresh", .2);
@@ -863,16 +869,14 @@ void run_yolo(int argc, char **argv)
 	
         demo_yolo(c_cfg, c_weights, thresh, -1/*cam_index*/, c_filename);    
     }
-    else if(0==strcmp(argv[2], "demo_darknet"))
+    else if(0==strcmp(argv[2], "demo_cam"))
     {
         float thresh               = find_float_arg( argc, argv, "-thresh", .2);      
-        char * c_filename          = find_char_arg(  argc, argv, "-c_filename", 0);
         int cam_index              = find_int_arg(   argc, argv, "-cam_idx", 0);
 	int frame_skip             = find_int_arg(   argc, argv, "-frame_skip", 20);
 	
 	
-	//FIXME list this option in the help dialog
-	demo(c_cfg, c_weights, thresh, cam_index, c_filename, frame_skip);
+	demo(c_cfg, c_weights, thresh, cam_index, frame_skip);
     }    
 
 

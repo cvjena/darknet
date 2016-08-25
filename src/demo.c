@@ -6,6 +6,13 @@
 #include "box.h"
 #include "image.h"
 #include "demo.h"
+// 
+// global variables
+#include "yolo_global_variables.h"
+// 
+// functions to convert detections to useful formats
+#include "detection_conversion.h"
+// 
 #include <sys/time.h>
 
 #define FRAMES 3
@@ -13,20 +20,6 @@
 #ifdef OPENCV
 #include "opencv2/highgui/highgui_c.h"
 #include "opencv2/imgproc/imgproc_c.h"
-
-// #ifdef __cplusplus
-// extern "C" {
-// #endif
-// global variables
-#include "yolo_global_variables.h"
-// externchar ** c_class_names;
-// int i_num_cl;
-// image *img_class_labels;
-// #ifdef __cplusplus
-// }
-// #endif
-
-void convert_detections(float *predictions, int classes, int num, int square, int side, int w, int h, float thresh, float **probs, box *boxes, int only_objectness);
 
 
 static char **demo_names;
@@ -99,7 +92,7 @@ double get_wall_time()
     return (double)time.tv_sec + (double)time.tv_usec * .000001;
 }
 
-void demo(char *cfgfile, char *weightfile, float thresh, int cam_index, const char *filename, int frame_skip)
+void demo(char *cfgfile, char *weightfile, float thresh, int cam_index, int frame_skip)
 {
     //skip = frame_skip;
     int delay = frame_skip;
@@ -118,11 +111,7 @@ void demo(char *cfgfile, char *weightfile, float thresh, int cam_index, const ch
 
     srand(2222222);
 
-    if(filename){
-        cap = cvCaptureFromFile(filename);
-    }else{
-        cap = cvCaptureFromCAM(cam_index);
-    }
+    cap = cvCaptureFromCAM(cam_index);
 
     if(!cap) error("Couldn't connect to webcam.\n");
 
@@ -213,7 +202,7 @@ void demo(char *cfgfile, char *weightfile, float thresh, int cam_index, const ch
     }
 }
 #else
-void demo(char *cfgfile, char *weightfile, float thresh, int cam_index, const char *filename, int frame_skip)
+void demo(char *cfgfile, char *weightfile, float thresh, int cam_index, int frame_skip)
 {
     fprintf(stderr, "Demo needs OpenCV for webcam images.\n");
 }
