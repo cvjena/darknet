@@ -13,6 +13,11 @@
 #include "opencv2/imgproc/imgproc_c.h"
 #endif
 
+// [solved]warning: implicit declaration of function ‘shortcut_gpu’ [-Wimplicit-function-declaration]
+#ifdef GPU
+void shortcut_gpu(int batch, int w1, int h1, int c1, float *add, int w2, int h2, int c2, float *out);
+#endif
+
 typedef struct {
     int h;
     int w;
